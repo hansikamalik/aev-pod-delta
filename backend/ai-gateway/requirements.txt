@@ -1,2 +1,7 @@
-fastapi
-uvicorn
+fastapi==0.115.6
+uvicorn==0.44.0
+openai==2.31.0
+python-dotenv==1.2.2
+redis==8.0.1
+google-genai
+httpx
