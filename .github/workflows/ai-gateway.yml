@@ -2,11 +2,11 @@ name: AI Gateway CI
 
 on:
   push:
-    branches: [develop]
+    branches: [main, develop]
     paths:
       - 'backend/ai-gateway/**'
   pull_request:
-    branches: [develop]
+    branches: [main, develop]
     paths:
       - 'backend/ai-gateway/**'
 
