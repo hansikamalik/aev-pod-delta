@@ -20,7 +20,7 @@ services:
       - "6379:6379"
 
   ai-gateway:
-    build: ./backend/ai-gateway
+    build: .
     container_name: aev_ai_gateway
     ports:
       - "8000:8000"
@@ -33,7 +33,7 @@ services:
       - postgres
       - redis
     volumes:
-      - ./backend/ai-gateway:/app
+      - .:/app
 
 volumes:
   postgres_data:
