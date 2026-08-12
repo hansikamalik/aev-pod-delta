@@ -1,0 +1,3 @@
+-- Week 1 migration stub
+-- AI Gateway: ai_interactions table
+-- Full schema and database wiring will be implemented in a later week.
