@@ -2,22 +2,29 @@ name: AI Gateway CI
 
 on:
   push:
-    branches: [develop]
+    branches:
+      - develop
     paths:
       - 'backend/ai-gateway/**'
+      - '.github/workflows/ai-gateway.yml'
+
   pull_request:
-    branches: [develop]
+    branches:
+      - develop
     paths:
       - 'backend/ai-gateway/**'
+      - '.github/workflows/ai-gateway.yml'
 
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: backend/ai-gateway
+
     steps:
-      - name: Check out code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -27,11 +34,14 @@ jobs:
 
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install flake8 pytest
+          pip install flake8
 
       - name: Lint with flake8
         run: flake8 app --max-line-length=100
 
       - name: Run tests
-        run: pytest
+        env:
+          PYTHONPATH: .
+        run: python -m pytest -v
