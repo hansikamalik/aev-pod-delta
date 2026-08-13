@@ -1,17 +1,20 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from pydantic import BaseModel
+from typing import Optional
 
 try:
     from app.config import settings
     from app.client import ask_gpt
+    from app.rate_limiter import check_rate_limit
 except ImportError:
     from config import settings
     from client import ask_gpt
+    from rate_limiter import check_rate_limit
 
 app = FastAPI(
     title=getattr(settings, "APP_NAME", "AI Gateway Service"),
     description="AI Gateway Backend for AEV Platform",
-    version=getattr(settings, "VERSION", "1.0"),
+    version=getattr(settings, "VERSION", "2.0"),
 )
 
 
@@ -35,13 +38,20 @@ async def health():
 
 
 @app.post("/copilot/query")
-def query(request: QueryRequest):
+def query(
+    request: QueryRequest,
+    x_user_id: Optional[str] = Header(default="anonymous")
+):
     """
-    Main AI Copilot query endpoint (Week 1).
-    Routes user question to active LLM engine (Gemma 4 / OpenAI / Mock).
+    Main AI Copilot query endpoint with Week 2 Redis Rate Limiting:
+    - Rate limit check (max 5 requests per minute per user)
+    - Routes user question to active LLM engine (Gemma 4 / OpenAI / Mock)
+    - If over limit -> returns HTTP 429 Too Many Requests
     """
+    rate_info = check_rate_limit(user_id=x_user_id)
     answer = ask_gpt(request.question)
     return {
         "question": request.question,
-        "answer": answer
+        "answer": answer,
+        "rate_limit": rate_info
     }
