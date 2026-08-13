@@ -2,14 +2,9 @@ from fastapi import FastAPI, Header
 from pydantic import BaseModel
 from typing import Optional
 
-try:
-    from app.config import settings
-    from app.client import ask_gpt
-    from app.rate_limiter import check_rate_limit
-except ImportError:
-    from config import settings
-    from client import ask_gpt
-    from rate_limiter import check_rate_limit
+from app.config import settings
+from app.client import ask_gpt
+from app.rate_limiter import check_rate_limit
 
 app = FastAPI(
     title=getattr(settings, "APP_NAME", "AI Gateway Service"),
