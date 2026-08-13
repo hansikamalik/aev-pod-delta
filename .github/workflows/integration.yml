@@ -1,0 +1,37 @@
+name: AI Gateway CI
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  test-ai-gateway:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend/ai-gateway
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        env:
+          PYTHONPATH: .
+        run: |
+          python -m pytest -v
