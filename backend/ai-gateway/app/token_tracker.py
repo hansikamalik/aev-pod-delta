@@ -9,8 +9,26 @@ class TokenTracker:
         """
         Extract prompt, completion, and total token counts.
 
-        Returns zero values when usage information is unavailable.
+        Supports:
+        - Gemini usage_metadata
+        - OpenAI usage
+        - Normalized gateway dictionaries
         """
+
+        if isinstance(response, dict):
+            usage = response.get("usage", response)
+
+            return {
+                "prompt_tokens": int(
+                    usage.get("prompt_tokens", 0) or 0
+                ),
+                "completion_tokens": int(
+                    usage.get("completion_tokens", 0) or 0
+                ),
+                "total_tokens": int(
+                    usage.get("total_tokens", 0) or 0
+                ),
+            }
 
         usage = getattr(response, "usage_metadata", None)
 

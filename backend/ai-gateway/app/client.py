@@ -1,72 +1,229 @@
+"""
+AI Gateway client.
+
+Week 2:
+- Google Gemma integration
+- Optional OpenAI fallback
+- Safe mock mode for local/CI testing
+- Environment-based configuration
+- Token usage metadata
+- Basic error handling
+"""
+
 import os
+from typing import Any, Dict, Optional
+
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# Retrieve API keys & settings
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 
-# Active mode resolution
+GOOGLE_MODEL = os.getenv(
+    "GOOGLE_MODEL",
+    "gemma-4-31b-it",
+).strip()
+
+OPENAI_MODEL = os.getenv(
+    "OPENAI_MODEL",
+    "gpt-4o",
+).strip()
+
+if OPENAI_API_KEY == "sk-put-your-key-here":
+    OPENAI_API_KEY = ""
+
 USE_GEMMA_GOOGLE = bool(GOOGLE_API_KEY)
-USE_OPENAI = bool(OPENAI_API_KEY) and OPENAI_API_KEY != "sk-put-your-key-here"
+USE_OPENAI = bool(OPENAI_API_KEY)
 
 
-def ask_gpt(question: str) -> str:
+def _extract_usage(response: Any) -> Dict[str, int]:
+    """Extract token usage from a model response."""
+
+    usage = getattr(response, "usage_metadata", None)
+
+    if usage is None:
+        usage = getattr(response, "usage", None)
+
+    if usage is None:
+        return {
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        }
+
+    prompt_tokens = getattr(
+        usage,
+        "prompt_token_count",
+        getattr(usage, "prompt_tokens", 0),
+    )
+
+    completion_tokens = getattr(
+        usage,
+        "candidates_token_count",
+        getattr(usage, "completion_tokens", 0),
+    )
+
+    total_tokens = getattr(
+        usage,
+        "total_token_count",
+        getattr(usage, "total_tokens", 0),
+    )
+
+    return {
+        "prompt_tokens": int(prompt_tokens or 0),
+        "completion_tokens": int(completion_tokens or 0),
+        "total_tokens": int(total_tokens or 0),
+    }
+
+
+def _build_result(
+    answer: str,
+    model: str,
+    usage: Dict[str, int],
+) -> Dict[str, Any]:
+    """Build a normalized gateway result."""
+
+    return {
+        "answer": answer,
+        "model": model,
+        "usage": usage,
+    }
+
+
+def _ask_gemma(question: str) -> Dict[str, Any]:
+    """Send a question to Google's Gemma model."""
+
+    from google import genai
+
+    client = genai.Client(api_key=GOOGLE_API_KEY)
+
+    response = client.models.generate_content(
+        model=GOOGLE_MODEL,
+        contents=question,
+    )
+
+    text = getattr(response, "text", None)
+
+    if not text:
+        raise RuntimeError("Google Gemma returned an empty response.")
+
+    usage = _extract_usage(response)
+
+    return _build_result(
+        answer=text.strip(),
+        model=GOOGLE_MODEL,
+        usage=usage,
+    )
+
+
+def _ask_openai(question: str) -> Dict[str, Any]:
+    """Send a question to OpenAI."""
+
+    import openai
+
+    client = openai.OpenAI(api_key=OPENAI_API_KEY)
+
+    response = client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a helpful AI assistant for an IT security "
+                    "platform. Provide accurate and concise answers."
+                ),
+            },
+            {
+                "role": "user",
+                "content": question,
+            },
+        ],
+        max_tokens=500,
+    )
+
+    text: Optional[str] = response.choices[0].message.content
+
+    if not text:
+        raise RuntimeError("OpenAI returned an empty response.")
+
+    usage = _extract_usage(response)
+
+    return _build_result(
+        answer=text.strip(),
+        model=OPENAI_MODEL,
+        usage=usage,
+    )
+
+
+def ask_gpt(question: str) -> Dict[str, Any]:
     """
-    Send a question to AI model and return the answer.
+    Send a question through the AI Gateway.
 
     Priority:
-    1. Gemma 4 via Google AI (FREE API) - if GOOGLE_API_KEY is set
-    2. GPT-4o via OpenAI (PAID API)    - if OPENAI_API_KEY is set
-    3. Mock response                   - if no key is set (for testing)
+    1. Google Gemma
+    2. OpenAI
+    3. Mock response
+
+    Returns a normalized response containing:
+    - answer
+    - model
+    - usage
     """
 
-    # ── MODE 1: GEMMA 4 via Google AI (FREE API) ───────────────────
+    if not isinstance(question, str):
+        raise TypeError("question must be a string")
+
+    question = question.strip()
+
+    if not question:
+        raise ValueError("question cannot be empty")
+
     if USE_GEMMA_GOOGLE:
-        from google import genai
+        try:
+            print(
+                f"[GEMMA GOOGLE MODE] "
+                f"model={GOOGLE_MODEL} question received"
+            )
 
-        print(f"[GEMMA GOOGLE API MODE] Question received: {question}")
+            return _ask_gemma(question)
 
-        client = genai.Client(api_key=GOOGLE_API_KEY)
+        except Exception as exc:
+            print(f"[GEMMA GOOGLE ERROR] {exc}")
 
-        response = client.models.generate_content(
-            model="gemma-4-31b-it",
-            contents=question
-        )
+            if not USE_OPENAI:
+                raise RuntimeError(
+                    f"Google Gemma request failed: {exc}"
+                ) from exc
 
-        return response.text
+    if USE_OPENAI:
+        try:
+            print(
+                f"[OPENAI MODE] "
+                f"model={OPENAI_MODEL} question received"
+            )
 
-    # ── MODE 2: OPENAI (GPT-4o — PAID API) ─────────────────────────
-    elif USE_OPENAI:
-        import openai
+            return _ask_openai(question)
 
-        print(f"[OPENAI MODE] Question received: {question}")
+        except Exception as exc:
+            print(f"[OPENAI ERROR] {exc}")
 
-        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+            raise RuntimeError(
+                f"OpenAI request failed: {exc}"
+            ) from exc
 
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful AI assistant for an IT security platform."
-                },
-                {
-                    "role": "user",
-                    "content": question
-                }
-            ],
-            max_tokens=500
-        )
+    print("[MOCK MODE] question received")
 
-        return response.choices[0].message.content
-
-    # ── MODE 3: MOCK (Fallback — for local offline testing) ────────
-    else:
-        print(f"[MOCK MODE] Question received: {question}")
-        return (
+    return _build_result(
+        answer=(
             f"[MOCK RESPONSE] Simulated answer to: '{question}'. "
-            "Set GOOGLE_API_KEY in .env for free Gemma 4 responses."
-        )
+            "Configure GOOGLE_API_KEY or OPENAI_API_KEY in .env "
+            "to use a real AI model."
+        ),
+        model="mock",
+        usage={
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+        },
+    )
