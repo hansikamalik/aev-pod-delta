@@ -65,4 +65,3 @@ class TokenTracker:
             "completion_tokens": int(completion_tokens or 0),
             "total_tokens": int(total_tokens or 0),
         }
-    
