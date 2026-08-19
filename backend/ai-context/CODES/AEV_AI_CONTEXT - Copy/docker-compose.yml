@@ -1,0 +1,9 @@
+services:
+  ai-context:
+    build: .
+    container_name: aev-ai-context
+    ports:
+      - "8001:8001"
+    env_file:
+      - .env
+    restart: unless-stopped
