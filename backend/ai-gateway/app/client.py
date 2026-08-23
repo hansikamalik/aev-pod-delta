@@ -14,7 +14,7 @@ Features:
 import os
 import json
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -165,14 +165,6 @@ def ask_gpt(question: str) -> Dict[str, Any]:
             return _ask_colab_gemma(question)
         except Exception as exc:
             print(f"[COLAB GEMMA ERROR] {exc}")
-
-    if USE_OPENAI:
-        try:
-            print(f"[OPENAI MODE] model={OPENAI_MODEL} question received")
-            return _ask_openai(question)
-        except Exception as exc:
-            print(f"[OPENAI ERROR] {exc}")
-            raise RuntimeError(f"OpenAI request failed: {exc}") from exc
 
     print("[MOCK MODE] question received")
     return _build_result(
