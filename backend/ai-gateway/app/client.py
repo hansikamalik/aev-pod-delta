@@ -4,7 +4,6 @@ AI Gateway client.
 Features:
 - Live Google Colab Gemma GPU API URL integration
 - Google Gemma 4 integration
-- Optional OpenAI fallback
 - Safe mock mode for local/CI testing
 - Environment-based configuration
 - Token usage metadata
@@ -20,18 +19,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 COLAB_GEMMA_URL = os.getenv("COLAB_GEMMA_URL", "").strip()
 
 GOOGLE_MODEL = "gemma-4-31b-it"
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o").strip()
-
-if OPENAI_API_KEY == "sk-put-your-key-here":
-    OPENAI_API_KEY = ""
 
 USE_COLAB_GEMMA = bool(COLAB_GEMMA_URL)
 USE_GEMMA_GOOGLE = bool(GOOGLE_API_KEY)
-USE_OPENAI = bool(OPENAI_API_KEY)
 
 
 def _extract_usage(response: Any) -> Dict[str, int]:
@@ -140,8 +133,7 @@ def ask_gpt(question: str) -> Dict[str, Any]:
     everyone's machines regardless of their local .env):
     1. Google Gemma Cloud API
     2. Colab Gemma T4 GPU API
-    3. OpenAI API
-    4. Mock response
+    3. Mock response
     """
     if not isinstance(question, str):
         raise TypeError("question must be a string")
@@ -156,7 +148,7 @@ def ask_gpt(question: str) -> Dict[str, Any]:
             return _ask_gemma(question)
         except Exception as exc:
             print(f"[GEMMA GOOGLE ERROR] {exc}")
-            if not USE_OPENAI and not USE_COLAB_GEMMA:
+            if not USE_COLAB_GEMMA:
                 raise RuntimeError(f"Google Gemma request failed: {exc}") from exc
 
     if USE_COLAB_GEMMA:
@@ -170,7 +162,7 @@ def ask_gpt(question: str) -> Dict[str, Any]:
     return _build_result(
         answer=(
             f"[MOCK RESPONSE] Simulated answer to: '{question}'. "
-            "Configure GOOGLE_API_KEY, COLAB_GEMMA_URL, or OPENAI_API_KEY in .env "
+            "Configure GOOGLE_API_KEY or COLAB_GEMMA_URL in .env "
             "to use a real AI model."
         ),
         model="mock",

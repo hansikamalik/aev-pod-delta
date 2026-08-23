@@ -51,3 +51,4 @@ def test_cost_tracker_unknown_model():
     )
 
     assert result["estimated_cost"] == 0.0
+    

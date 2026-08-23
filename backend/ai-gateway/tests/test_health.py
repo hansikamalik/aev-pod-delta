@@ -21,3 +21,4 @@ def test_health():
         "status": "healthy",
         "service": "AI Gateway Service"
     }
+    

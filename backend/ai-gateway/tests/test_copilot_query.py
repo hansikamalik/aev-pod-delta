@@ -59,3 +59,4 @@ def test_copilot_query_end_to_end(monkeypatch):
     assert data["guardrails"]["max_output_length"] == 4000
 
     assert "AI-generated, verify before acting." in data["answer"]
+    
