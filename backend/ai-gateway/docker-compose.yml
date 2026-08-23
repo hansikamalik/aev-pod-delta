@@ -26,7 +26,6 @@ services:
       - "8000:8000"
     environment:
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
       REDIS_URL: redis://redis:6379
       DATABASE_URL: postgresql://aev:secret@postgres:5432/aevdb
     depends_on:

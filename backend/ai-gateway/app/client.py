@@ -23,7 +23,7 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 COLAB_GEMMA_URL = os.getenv("COLAB_GEMMA_URL", "").strip()
 
-GOOGLE_MODEL = os.getenv("GOOGLE_MODEL", "gemma-4-31b-it").strip()
+GOOGLE_MODEL = "gemma-4-31b-it"
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o").strip()
 
 if OPENAI_API_KEY == "sk-put-your-key-here":
@@ -128,48 +128,18 @@ def _ask_gemma(question: str) -> Dict[str, Any]:
     )
 
 
-def _ask_openai(question: str) -> Dict[str, Any]:
-    """Send a question to OpenAI."""
-    import openai
-
-    client = openai.OpenAI(api_key=OPENAI_API_KEY)
-    response = client.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a helpful AI assistant for an IT security "
-                    "platform. Provide accurate and concise answers."
-                ),
-            },
-            {
-                "role": "user",
-                "content": question,
-            },
-        ],
-        max_tokens=500,
-    )
-
-    text: Optional[str] = response.choices[0].message.content
-    if not text:
-        raise RuntimeError("OpenAI returned an empty response.")
-
-    usage = _extract_usage(response)
-    return _build_result(
-        answer=text.strip(),
-        model=OPENAI_MODEL,
-        usage=usage,
-    )
-
-
 def ask_gpt(question: str) -> Dict[str, Any]:
     """
     Send a question through the AI Gateway.
 
-    Priority:
-    1. Colab Gemma T4 GPU API
-    2. Google Gemma Cloud API
+    Priority (current team decision - Google API is the active hosting
+    method for now, since Colab's 90min session timeout makes it
+    unreliable for ongoing testing. Colab is kept as a secondary option
+    so it still works for anyone actively running a live notebook, but
+    Google API is tried first so behavior is consistent across
+    everyone's machines regardless of their local .env):
+    1. Google Gemma Cloud API
+    2. Colab Gemma T4 GPU API
     3. OpenAI API
     4. Mock response
     """
@@ -180,13 +150,6 @@ def ask_gpt(question: str) -> Dict[str, Any]:
     if not question:
         raise ValueError("question cannot be empty")
 
-    if USE_COLAB_GEMMA:
-        try:
-            print(f"[COLAB GEMMA GPU MODE] question received: {question}")
-            return _ask_colab_gemma(question)
-        except Exception as exc:
-            print(f"[COLAB GEMMA ERROR] {exc}")
-
     if USE_GEMMA_GOOGLE:
         try:
             print(f"[GEMMA GOOGLE MODE] model={GOOGLE_MODEL} question received")
@@ -195,6 +158,13 @@ def ask_gpt(question: str) -> Dict[str, Any]:
             print(f"[GEMMA GOOGLE ERROR] {exc}")
             if not USE_OPENAI and not USE_COLAB_GEMMA:
                 raise RuntimeError(f"Google Gemma request failed: {exc}") from exc
+
+    if USE_COLAB_GEMMA:
+        try:
+            print(f"[COLAB GEMMA GPU MODE] question received: {question}")
+            return _ask_colab_gemma(question)
+        except Exception as exc:
+            print(f"[COLAB GEMMA ERROR] {exc}")
 
     if USE_OPENAI:
         try:
