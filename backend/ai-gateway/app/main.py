@@ -84,9 +84,11 @@ def query(
         completion_tokens=usage["completion_tokens"],
     )
 
-    safe_answer = guardrails.process_output(
-        result.get("answer", "")
-    )
+    raw_answer = result.get("answer", "")
+    redacted_answer = guardrails.redact_pii(raw_answer)
+    output_was_redacted = redacted_answer != raw_answer
+
+    safe_answer = guardrails.process_output(raw_answer)
 
     return {
         "question": sanitized_question,
@@ -97,7 +99,7 @@ def query(
         "rate_limit": rate_info,
         "guardrails": {
             "input_pii_redacted": sanitized_question != request.question,
-            "output_pii_redacted": True,
+            "output_pii_redacted": output_was_redacted,
             "disclaimer_added": True,
             "max_output_length": guardrails.max_output_length,
         },

@@ -30,6 +30,9 @@ class Guardrails:
             r"you\s+are\s+now\s+dan",
             r"bypass\s+(all\s+)?safety\s+(rules|restrictions)",
             r"act\s+as\s+an\s+unrestricted",
+            r"disregard\s+(all\s+)?(previous|prior)\s+instructions",
+            r"new\s+instructions\s*:",
+            r"pretend\s+(you\s+are|to\s+be)\s+an?\s+unrestricted",
         ]
 
         self.blocked_topics = [
@@ -37,6 +40,13 @@ class Guardrails:
             "make an explosive",
             "create malware",
             "creating malware",
+            "build a weapon",
+            "make a weapon",
+            "build an explosive device",
+            "create a virus",
+            "creating a virus",
+            "write malware",
+            "writing malware",
         ]
 
     def is_prompt_injection(self, text: str) -> bool:
@@ -97,7 +107,7 @@ class Guardrails:
         )
 
         text = re.sub(
-            r"\b(?:\d[ -]?){13,19}\b",
+            r"\b\d(?:[ -]?\d){12,18}\b",
             lambda match: (
                 "[REDACTED_CREDIT_CARD]"
                 if len(re.sub(r"[ -]", "", match.group())) >= 13
