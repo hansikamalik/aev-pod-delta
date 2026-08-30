@@ -236,6 +236,90 @@ If the per-user rate limit is exceeded, the request is rejected with a `429`.
 
 ---
 
+## Guardrail Configuration
+
+Guardrails live in `app/guardrails.py`, inside the `Guardrails` class. There's
+no separate config file or environment variable for these — they're plain
+Python lists and constants at the top of the class, edited directly in code
+and covered by tests in `tests/test_guardrails.py`.
+
+### Adding a prompt-injection pattern
+
+Add a new entry (a regex string) to `self.prompt_injection_patterns` in
+`Guardrails.__init__`:
+
+```python
+self.prompt_injection_patterns = [
+    r"ignore\s+(all\s+)?previous\s+instructions",
+    # ...existing patterns...
+    r"your\s+new\s+pattern\s+here",
+]
+```
+
+Patterns are matched case-insensitively against the whole input. Keep them
+narrow enough to avoid catching legitimate questions — always add a test in
+both directions: one proving the new pattern catches the attack phrasing you
+have in mind, and one proving a normal question using similar words still
+passes through (see `test_similar_sounding_but_safe_prompt_is_allowed` for
+an example of this second kind of test).
+
+### Adding a blocked topic
+
+Add a new phrase (plain lowercase text, matched as a substring) to
+`self.blocked_topics`:
+
+```python
+self.blocked_topics = [
+    "build a bomb",
+    # ...existing topics...
+    "your new blocked phrase",
+]
+```
+
+**Be careful here.** This tool is used by security professionals who
+legitimately need to ask about attack concepts (ransomware, phishing,
+malware detection, SQL injection, etc.) as part of normal work. The current
+list is deliberately narrow — it only blocks direct requests to *build or
+create* something harmful, not requests to *learn about or discuss* attack
+concepts defensively. Widening this list risks blocking legitimate use of
+the tool. If you're unsure whether a new phrase belongs here, raise it with
+the squad before adding it, and add a test proving normal security
+questions still pass (see `test_legitimate_security_education_is_allowed`).
+
+### Changing the maximum output length
+
+`Guardrails` accepts `max_output_length` in its constructor (default
+`4000`). It's currently instantiated in `app/main.py` with no argument,
+so it's using that default:
+
+```python
+guardrails = Guardrails()
+```
+
+To change the limit, pass it explicitly:
+
+```python
+guardrails = Guardrails(max_output_length=6000)
+```
+
+### What PII is redacted, and how to add more
+
+`Guardrails.redact_pii()` currently redacts:
+
+| Type | Pattern | Replaced with |
+|---|---|---|
+| Email | standard email format | `[REDACTED_EMAIL]` |
+| SSN | `123-45-6789` format | `[REDACTED_SSN]` |
+| Credit card | 13–19 digits, with or without spaces/dashes | `[REDACTED_CREDIT_CARD]` |
+
+This same function runs on both input (before the question reaches Gemma)
+and output (before the answer is returned to the user). To redact another
+pattern (e.g. phone numbers), add another `re.sub(...)` call inside
+`redact_pii`, following the same style as the existing three, and add a
+test for both the input and output path.
+
+---
+
 ## Testing
 
 ```bash
