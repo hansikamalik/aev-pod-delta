@@ -25,3 +25,4 @@ async def generate_citations(payload: CitationRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    

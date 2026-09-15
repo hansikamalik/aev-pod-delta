@@ -65,6 +65,7 @@ def test_dispatch_runs_the_tool_and_returns_result():
         "risk_score_get",
         {"asset_id": "db-prod-01"},
         user_id="hansika",
+        role="admin",
     )
 
     assert response["ok"] is True
@@ -86,13 +87,16 @@ def test_dispatch_passes_user_id_to_the_tool():
         "risk_score_get",
         {"asset_id": "db-prod-01"},
         user_id="hansika",
+        role="admin",
     )
 
     assert seen["user_id"] == "hansika"
 
 
 def test_unknown_tool_is_rejected_not_crashed():
-    response = tools.dispatch_tool("not_a_real_tool", {}, user_id="hansika")
+    response = tools.dispatch_tool(
+        "not_a_real_tool", {}, user_id="hansika", role="admin"
+    )
 
     assert response["ok"] is False
     assert "Unknown" in response["error"]
@@ -103,7 +107,9 @@ def test_missing_required_argument_is_rejected():
     def fake_risk(user_id, asset_id):
         return {}
 
-    response = tools.dispatch_tool("risk_score_get", {}, user_id="hansika")
+    response = tools.dispatch_tool(
+        "risk_score_get", {}, user_id="hansika", role="admin"
+    )
 
     assert response["ok"] is False
     assert "asset_id" in response["error"]
@@ -118,6 +124,7 @@ def test_unexpected_argument_is_rejected():
         "risk_score_get",
         {"asset_id": "db-prod-01", "sneaky": "value"},
         user_id="hansika",
+        role="admin",
     )
 
     assert response["ok"] is False
@@ -138,6 +145,7 @@ def test_failing_tool_returns_error_instead_of_crashing():
         "risk_score_get",
         {"asset_id": "db-prod-01"},
         user_id="hansika",
+        role="admin",
     )
 
     assert response["ok"] is False
@@ -149,7 +157,90 @@ def test_optional_arguments_can_be_omitted():
     def fake_exposures(user_id, asset_id=None, severity=None):
         return {"count": 3}
 
-    response = tools.dispatch_tool("exposure_query", {}, user_id="hansika")
+    response = tools.dispatch_tool(
+        "exposure_query", {}, user_id="hansika", role="admin"
+    )
 
     assert response["ok"] is True
     assert response["result"]["count"] == 3
+
+
+# ---------------------------------------------------------
+# RBAC enforcement
+# ---------------------------------------------------------
+
+def test_role_without_permission_is_denied():
+    @tools.register_tool("risk_score_get")
+    def fake_risk(user_id, asset_id):
+        return {"score": 92}
+
+    response = tools.dispatch_tool(
+        "risk_score_get",
+        {"asset_id": "db-prod-01"},
+        user_id="someone",
+        role="viewer",  # viewer is not allowed risk_score_get
+    )
+
+    assert response["ok"] is False
+    assert "not permitted" in response["error"]
+
+
+def test_denied_role_never_runs_the_tool():
+    """
+    A permission denial must stop execution entirely -- the tool
+    function itself should never run for a caller who isn't allowed.
+    """
+
+    called = {"ran": False}
+
+    @tools.register_tool("risk_score_get")
+    def fake_risk(user_id, asset_id):
+        called["ran"] = True
+        return {}
+
+    tools.dispatch_tool(
+        "risk_score_get",
+        {"asset_id": "db-prod-01"},
+        user_id="someone",
+        role="viewer",
+    )
+
+    assert called["ran"] is False
+
+
+def test_anonymous_role_is_denied_even_for_a_permitted_tool():
+    @tools.register_tool("asset_search")
+    def fake_search(user_id, query):
+        return {"results": []}
+
+    response = tools.dispatch_tool(
+        "asset_search",
+        {"query": "prod database"},
+        user_id="anonymous",
+        role="anonymous",
+    )
+
+    assert response["ok"] is False
+
+
+def test_permission_denial_happens_before_argument_validation():
+    """
+    A caller without permission should not learn anything about the
+    tool's expected arguments -- so an empty/invalid argument set from
+    an unauthorized role should still fail with a permission error, not
+    an argument error.
+    """
+
+    @tools.register_tool("risk_score_get")
+    def fake_risk(user_id, asset_id):
+        return {}
+
+    response = tools.dispatch_tool(
+        "risk_score_get",
+        {},  # missing required asset_id -- but role gets checked first
+        user_id="someone",
+        role="viewer",
+    )
+
+    assert response["ok"] is False
+    assert "not permitted" in response["error"]
