@@ -15,6 +15,7 @@ are registered here by the squad members who build them. This module
 only owns the framework -- not the tool logic itself.
 """
 
+from app.permissions import is_allowed
 from typing import Any, Callable, Dict, List
 
 
@@ -195,6 +196,7 @@ def dispatch_tool(
     tool_name: str,
     arguments: Dict[str, Any],
     user_id: str,
+    role: str,
 ) -> Dict[str, Any]:
     """
     Route a model-requested tool call to its implementation and run it.
@@ -206,6 +208,12 @@ def dispatch_tool(
 
     A failing tool must not crash the whole request -- the model needs a
     chance to explain the failure to the user instead.
+
+    RBAC is enforced here, centrally, rather than inside each tool --
+    that way no tool implementation can forget the permission check.
+    The check runs BEFORE argument validation on purpose: a caller who
+    lacks permission for a tool should not learn anything about that
+    tool's expected arguments either.
     """
 
     if tool_name not in _TOOL_REGISTRY:
@@ -214,6 +222,14 @@ def dispatch_tool(
             "ok": False,
             "result": None,
             "error": f"Unknown or unregistered tool: '{tool_name}'",
+        }
+
+    if not is_allowed(role, tool_name):
+        return {
+            "tool": tool_name,
+            "ok": False,
+            "result": None,
+            "error": f"Role '{role}' is not permitted to use '{tool_name}'.",
         }
 
     try:
@@ -230,7 +246,8 @@ def dispatch_tool(
 
     try:
         # user_id is always passed so the tool can scope its query to
-        # what this specific caller is allowed to see (RBAC).
+        # what this specific caller is allowed to see (defense in depth
+        # on top of the role check above).
         result = func(user_id=user_id, **arguments)
     except Exception as exc:  # noqa: BLE001 - tools are third-party code
         return {
