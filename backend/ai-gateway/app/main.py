@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
+from app.citations import router as citations_router
 from app.client import ask_gpt
 from app.config import settings
 from app.cost_tracker import CostTracker
@@ -16,6 +17,8 @@ app = FastAPI(
     description="AI Gateway Backend for AEV Platform",
     version=getattr(settings, "VERSION", "2.0"),
 )
+
+app.include_router(citations_router)
 
 guardrails = Guardrails()
 
