@@ -1,9 +1,9 @@
 """
-Guardrails v1 for the AI Gateway.
+Guardrails v2 for the AI Gateway.
 
 Provides:
-- Prompt-injection detection
-- Input PII redaction
+- Expanded Prompt-injection detection & corpus hardening
+- Input PII redaction (Credit Cards, SSNs, Emails, International Phone Numbers)
 - Blocked-topic detection
 - Output PII redaction
 - AI-generated disclaimer
@@ -27,12 +27,18 @@ class Guardrails:
             r"override\s+(the\s+)?system\s+instructions?",
             r"reveal\s+(the\s+)?system\s+prompt",
             r"show\s+(me\s+)?the\s+system\s+prompt",
+            r"print\s+(your\s+)?initial\s+prompt",
+            r"output\s+the\s+text\s+(above|before)",
             r"you\s+are\s+now\s+dan",
+            r"enable\s+developer\s+mode",
+            r"you\s+are\s+now\s+in\s+developer\s+mode",
             r"bypass\s+(all\s+)?safety\s+(rules|restrictions)",
             r"act\s+as\s+an\s+unrestricted",
             r"disregard\s+(all\s+)?(previous|prior)\s+instructions",
             r"new\s+instructions\s*:",
             r"pretend\s+(you\s+are|to\s+be)\s+an?\s+unrestricted",
+            r"jailbreak",
+            r"ignore\s+(ethical|safety)\s+guidelines",
         ]
 
         self.blocked_topics = [
@@ -51,7 +57,6 @@ class Guardrails:
 
     def is_prompt_injection(self, text: str) -> bool:
         """Return True when the input resembles a prompt injection."""
-
         normalized = " ".join(text.lower().split())
 
         return any(
@@ -61,7 +66,6 @@ class Guardrails:
 
     def is_blocked_topic(self, text: str) -> bool:
         """Return True when the input contains a configured blocked topic."""
-
         normalized = " ".join(text.lower().split())
 
         return any(
@@ -71,7 +75,6 @@ class Guardrails:
 
     def check_input(self, text: str) -> Dict[str, object]:
         """Check input for prompt injection and blocked topics."""
-
         if self.is_prompt_injection(text):
             return {
                 "allowed": False,
@@ -91,21 +94,8 @@ class Guardrails:
 
     @staticmethod
     def redact_pii(text: str) -> str:
-        """Redact common email, SSN and credit-card patterns."""
-
-        text = re.sub(
-            r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b",
-            "[REDACTED_EMAIL]",
-            text,
-            flags=re.IGNORECASE,
-        )
-
-        text = re.sub(
-            r"\b\d{3}-\d{2}-\d{4}\b",
-            "[REDACTED_SSN]",
-            text,
-        )
-
+        """Redact common credit card, email, SSN, and phone number patterns."""
+        # 1. Credit Card Redaction (13-19 digits)
         text = re.sub(
             r"\b\d(?:[ -]?\d){12,18}\b",
             lambda match: (
@@ -116,11 +106,36 @@ class Guardrails:
             text,
         )
 
+        # 2. Email Redaction
+        text = re.sub(
+            r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b",
+            "[REDACTED_EMAIL]",
+            text,
+            flags=re.IGNORECASE,
+        )
+
+        # 3. SSN Redaction (hyphenated or spaced 9 digits: XXX-XX-XXXX)
+        text = re.sub(
+            r"\b\d{3}[- ]\d{2}[- ]\d{4}\b",
+            "[REDACTED_SSN]",
+            text,
+        )
+
+        # 4. International & Standard Phone Numbers (10-12 digits)
+        text = re.sub(
+            r"(?:\+\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}\b",
+            lambda match: (
+                "[REDACTED_PHONE]"
+                if 10 <= len(re.sub(r"\D", "", match.group())) <= 12
+                else match.group()
+            ),
+            text,
+        )
+
         return text
 
     def process_input(self, text: str) -> Dict[str, object]:
         """Validate and redact an incoming prompt."""
-
         check_result = self.check_input(text)
 
         if not check_result["allowed"]:
@@ -135,16 +150,11 @@ class Guardrails:
         }
 
     def process_output(self, text: str) -> str:
-        """
-        Redact PII, add disclaimer, and enforce maximum length.
-        """
-
+        """Redact PII, add disclaimer, and enforce maximum length."""
         sanitized = self.redact_pii(text)
 
         disclaimer = "\n\nAI-generated, verify before acting."
 
-        # Reserve space for the disclaimer so the FINAL response
-        # never exceeds max_output_length.
         available_length = max(
             0,
             self.max_output_length - len(disclaimer),
