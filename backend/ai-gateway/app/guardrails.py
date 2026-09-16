@@ -121,12 +121,12 @@ class Guardrails:
             text,
         )
 
-        # 4. International & Standard Phone Numbers (10-12 digits)
+        # 4. International & Standard Phone Numbers (10-15 digits)
         text = re.sub(
-            r"(?:\+\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}\b",
+            r"(?:\+\d{1,3}[-.\s]?)?(?:\(?\d{2,5}\)?[-.\s]?)?\d{3,5}[-.\s]?\d{3,5}\b",
             lambda match: (
                 "[REDACTED_PHONE]"
-                if 10 <= len(re.sub(r"\D", "", match.group())) <= 12
+                if 10 <= len(re.sub(r"\D", "", match.group())) <= 15
                 else match.group()
             ),
             text,

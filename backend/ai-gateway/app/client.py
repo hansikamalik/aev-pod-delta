@@ -19,9 +19,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 COLAB_GEMMA_URL = os.getenv("COLAB_GEMMA_URL", "").strip()
 
-GOOGLE_MODEL = "gemma-4-31b-it"
+GOOGLE_MODEL = os.getenv("GOOGLE_MODEL", "gemma-4-31b-it").strip()
+
+if OPENAI_API_KEY == "sk-put-your-key-here":
+    OPENAI_API_KEY = ""
 
 USE_COLAB_GEMMA = bool(COLAB_GEMMA_URL)
 USE_GEMMA_GOOGLE = bool(GOOGLE_API_KEY)
@@ -125,15 +129,10 @@ def ask_gpt(question: str) -> Dict[str, Any]:
     """
     Send a question through the AI Gateway.
 
-    Priority (current team decision - Google API is the active hosting
-    method for now, since Colab's 90min session timeout makes it
-    unreliable for ongoing testing. Colab is kept as a secondary option
-    so it still works for anyone actively running a live notebook, but
-    Google API is tried first so behavior is consistent across
-    everyone's machines regardless of their local .env):
-    1. Google Gemma Cloud API
-    2. Colab Gemma T4 GPU API
-    3. Mock response
+    Tiered Fallback Architecture:
+    1. Google Gemma Cloud API (Primary)
+    2. Colab Gemma T4 GPU API (Secondary)
+    3. Mock response (Safety Fallback)
     """
     if not isinstance(question, str):
         raise TypeError("question must be a string")
@@ -147,16 +146,14 @@ def ask_gpt(question: str) -> Dict[str, Any]:
             print(f"[GEMMA GOOGLE MODE] model={GOOGLE_MODEL} question received")
             return _ask_gemma(question)
         except Exception as exc:
-            print(f"[GEMMA GOOGLE ERROR] {exc}")
-            if not USE_COLAB_GEMMA:
-                raise RuntimeError(f"Google Gemma request failed: {exc}") from exc
+            print(f"[GEMMA GOOGLE ERROR] {exc}. Falling back to secondary/mock.")
 
     if USE_COLAB_GEMMA:
         try:
             print(f"[COLAB GEMMA GPU MODE] question received: {question}")
             return _ask_colab_gemma(question)
         except Exception as exc:
-            print(f"[COLAB GEMMA ERROR] {exc}")
+            print(f"[COLAB GEMMA ERROR] {exc}. Falling back to mock.")
 
     print("[MOCK MODE] question received")
     return _build_result(
