@@ -1,0 +1,13 @@
+{
+  "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users/$entity",
+  "id": "e4d3c2b1-0a9b-8c7d-6e5f-4a3b2c1d0e9f",
+  "userPrincipalName": "external_vendor_guest#EXT#@company.onmicrosoft.com",
+  "displayName": "External Vendor (Disabled)",
+  "givenName": "External",
+  "surname": "Vendor",
+  "accountEnabled": false,
+  "userType": "Guest",
+  "mail": "vendor@externalpartner.com",
+  "assignedRoles": [],
+  "createdDateTime": "2024-01-15T08:30:00Z"
+}
