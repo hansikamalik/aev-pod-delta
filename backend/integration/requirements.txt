@@ -16,4 +16,5 @@ requests-mock
 pytest
 requests-mock
 jsonschema
+requests
 requests-mock
