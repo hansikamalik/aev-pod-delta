@@ -1,34 +1,82 @@
 """
-AI Gateway client.
+AI Gateway client with structured fallback logging and rate-spike alerting.
 
 Features:
-- Live Google Colab Gemma GPU API URL integration
-- Google Gemma 4 integration
-- Safe mock mode for local/CI testing
-- Environment-based configuration
-- Token usage metadata
-- Basic error handling
+- Primary: Google Gemma Cloud API
+- Secondary: Live Google Colab Gemma GPU API URL integration
+- Safety Fallback: Safe mock mode for local/CI testing with clear metadata
+- Structured Fallback Logging (JSON/Standard logger)
+- Fallback Spike Alerting (sliding window rate monitor)
+- Token usage metadata & error handling
 """
 
 import os
 import json
+import time
+import logging
 import urllib.request
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 from dotenv import load_dotenv
 
 load_dotenv()
 
+# Setup structured logger for AI Gateway fallbacks
+logger = logging.getLogger("ai_gateway.fallback")
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        '{"timestamp": "%(asctime)s", "level": "%(levelname)s", '
+        '"logger": "%(name)s", "message": "%(message)s"}'
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 COLAB_GEMMA_URL = os.getenv("COLAB_GEMMA_URL", "").strip()
-
 GOOGLE_MODEL = os.getenv("GOOGLE_MODEL", "gemma-4-31b-it").strip()
-
-if OPENAI_API_KEY == "sk-put-your-key-here":
-    OPENAI_API_KEY = ""
 
 USE_COLAB_GEMMA = bool(COLAB_GEMMA_URL)
 USE_GEMMA_GOOGLE = bool(GOOGLE_API_KEY)
+
+
+class FallbackMonitor:
+    """Tracks fallback events and triggers alerts on rate spikes."""
+
+    def __init__(self, spike_threshold: int = 3, window_seconds: int = 60):
+        self.spike_threshold = spike_threshold
+        self.window_seconds = window_seconds
+        self.fallback_timestamps: List[float] = []
+
+    def record_fallback(self, from_provider: str, to_provider: str, reason: str):
+        """Record a fallback event, log structured info, and check for spikes."""
+        now = time.time()
+        self.fallback_timestamps.append(now)
+
+        # Prune timestamps older than window_seconds
+        self.fallback_timestamps = [
+            ts for ts in self.fallback_timestamps
+            if now - ts <= self.window_seconds
+        ]
+
+        logger.warning(
+            f"Fallback triggered: from={from_provider} to={to_provider} "
+            f"reason='{reason}' count_in_window={len(self.fallback_timestamps)}"
+        )
+
+        # Check if fallback rate exceeds spike threshold
+        if len(self.fallback_timestamps) >= self.spike_threshold:
+            logger.critical(
+                f"[ALERT] Fallback rate spike detected! "
+                f"{len(self.fallback_timestamps)} fallbacks in the last "
+                f"{self.window_seconds}s (Threshold: {self.spike_threshold})."
+            )
+            return True
+        return False
+
+
+# Global fallback monitor instance
+fallback_monitor = FallbackMonitor(spike_threshold=3, window_seconds=60)
 
 
 def _extract_usage(response: Any) -> Dict[str, int]:
@@ -71,13 +119,19 @@ def _build_result(
     answer: str,
     model: str,
     usage: Dict[str, int],
+    fallback: bool = False,
+    fallback_reason: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Build a normalized gateway result."""
-    return {
+    """Build a normalized gateway result with explicit fallback indicators."""
+    result: Dict[str, Any] = {
         "answer": answer,
         "model": model,
         "usage": usage,
+        "fallback": fallback,
     }
+    if fallback:
+        result["fallback_reason"] = fallback_reason
+    return result
 
 
 def _ask_colab_gemma(question: str) -> Dict[str, Any]:
@@ -127,12 +181,10 @@ def _ask_gemma(question: str) -> Dict[str, Any]:
 
 def ask_gpt(question: str) -> Dict[str, Any]:
     """
-    Send a question through the AI Gateway.
-
-    Tiered Fallback Architecture:
+    Send a question through the AI Gateway with structured fallback hierarchy:
     1. Google Gemma Cloud API (Primary)
     2. Colab Gemma T4 GPU API (Secondary)
-    3. Mock response (Safety Fallback)
+    3. Mock response (Safety Fallback with explicit warning metadata)
     """
     if not isinstance(question, str):
         raise TypeError("question must be a string")
@@ -141,21 +193,41 @@ def ask_gpt(question: str) -> Dict[str, Any]:
     if not question:
         raise ValueError("question cannot be empty")
 
+    fallback_reason: Optional[str] = None
+
+    # --- 1. Primary: Google Cloud Gemma ---
     if USE_GEMMA_GOOGLE:
         try:
-            print(f"[GEMMA GOOGLE MODE] model={GOOGLE_MODEL} question received")
             return _ask_gemma(question)
         except Exception as exc:
-            print(f"[GEMMA GOOGLE ERROR] {exc}. Falling back to secondary/mock.")
+            fallback_reason = f"Google Gemma failed: {exc}"
+            fallback_monitor.record_fallback(
+                from_provider="google_gemma",
+                to_provider="colab_gemma" if USE_COLAB_GEMMA else "mock",
+                reason=str(exc)
+            )
 
+    # --- 2. Secondary: Google Colab T4 GPU Gemma ---
     if USE_COLAB_GEMMA:
         try:
-            print(f"[COLAB GEMMA GPU MODE] question received: {question}")
-            return _ask_colab_gemma(question)
+            res = _ask_colab_gemma(question)
+            if fallback_reason:
+                res["fallback"] = True
+                res["fallback_reason"] = fallback_reason
+            return res
         except Exception as exc:
-            print(f"[COLAB GEMMA ERROR] {exc}. Falling back to mock.")
+            colab_error = f"Colab Gemma failed: {exc}"
+            if fallback_reason:
+                fallback_reason = f"{fallback_reason} | {colab_error}"
+            else:
+                fallback_reason = colab_error
+            fallback_monitor.record_fallback(
+                from_provider="colab_gemma",
+                to_provider="mock",
+                reason=str(exc)
+            )
 
-    print("[MOCK MODE] question received")
+    # --- 3. Safety Fallback: Mock Response with warning metadata ---
     return _build_result(
         answer=(
             f"[MOCK RESPONSE] Simulated answer to: '{question}'. "
@@ -168,4 +240,6 @@ def ask_gpt(question: str) -> Dict[str, Any]:
             "completion_tokens": 0,
             "total_tokens": 0,
         },
+        fallback=bool(fallback_reason),
+        fallback_reason=fallback_reason or "No active LLM credentials configured",
     )
