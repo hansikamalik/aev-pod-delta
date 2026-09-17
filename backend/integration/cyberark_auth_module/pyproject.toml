@@ -23,3 +23,18 @@ dev = [
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 pythonpath = ["."]
+
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cyberark_auth_module"
+version = "0.1.0"
+dependencies = [
+    "requests-mock"
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
