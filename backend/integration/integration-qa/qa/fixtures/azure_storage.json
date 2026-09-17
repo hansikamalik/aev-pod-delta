@@ -1,0 +1,22 @@
+[
+  {
+    "id": "/subscriptions/33333333-3333-3333-3333-333333333333/resourceGroups/rg-prod-eu/providers/Microsoft.Storage/storageAccounts/stproddata01",
+    "name": "stproddata01",
+    "location": "westeurope",
+    "kind": "StorageV2",
+    "sku": "Standard_LRS",
+    "httpsOnly": true,
+    "publicNetworkAccess": "Disabled",
+    "tags": {"env": "prod", "data": "pii"}
+  },
+  {
+    "id": "/subscriptions/33333333-3333-3333-3333-333333333333/resourceGroups/rg-dev-in/providers/Microsoft.Storage/storageAccounts/stdevlogs01",
+    "name": "stdevlogs01",
+    "location": "centralindia",
+    "kind": "BlobStorage",
+    "sku": "Standard_GRS",
+    "httpsOnly": false,
+    "publicNetworkAccess": "Enabled",
+    "tags": {"env": "dev"}
+  }
+]

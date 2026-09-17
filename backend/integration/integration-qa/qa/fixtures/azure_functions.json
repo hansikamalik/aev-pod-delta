@@ -1,0 +1,20 @@
+[
+  {
+    "id": "/subscriptions/33333333-3333-3333-3333-333333333333/resourceGroups/rg-prod-eu/providers/Microsoft.Web/sites/func-prod-ingest",
+    "name": "func-prod-ingest",
+    "location": "westeurope",
+    "runtime": "python",
+    "state": "Running",
+    "httpsOnly": true,
+    "tags": {"env": "prod", "team": "platform"}
+  },
+  {
+    "id": "/subscriptions/33333333-3333-3333-3333-333333333333/resourceGroups/rg-dev-in/providers/Microsoft.Web/sites/func-dev-etl",
+    "name": "func-dev-etl",
+    "location": "centralindia",
+    "runtime": "dotnet",
+    "state": "Stopped",
+    "httpsOnly": false,
+    "tags": {"env": "dev"}
+  }
+]
