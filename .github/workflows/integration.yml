@@ -213,3 +213,9 @@ jobs:
         working-directory: backend/integration
         run: |
           python -m pytest -c pytest.ini -v
+
+      - name: Run integration tests
+        shell: bash
+        run: |
+          export PYTHONPATH="$GITHUB_WORKSPACE/backend/integration/Azure Normalizaton and Platform Push:$GITHUB_WORKSPACE/backend/integration/cyberark_auth_module:$GITHUB_WORKSPACE/backend/integration"
+          python -m pytest -v backend/integration
