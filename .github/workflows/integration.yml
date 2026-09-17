@@ -219,3 +219,27 @@ jobs:
         run: |
           export PYTHONPATH="$GITHUB_WORKSPACE/backend/integration/Azure Normalizaton and Platform Push:$GITHUB_WORKSPACE/backend/integration/cyberark_auth_module:$GITHUB_WORKSPACE/backend/integration"
           python -m pytest -v backend/integration
+
+          - name: Run integration tests
+  shell: bash
+  run: |
+    set -euo pipefail
+
+    azure_dir="backend/integration/Azure Normalization and Platform Push"
+    cyberark_dir="backend/integration/cyberark_auth_module"
+
+    if [ -d "$azure_dir/tests" ]; then
+      (
+        cd "$azure_dir"
+        PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}" \
+          python -m pytest -v tests
+      )
+    fi
+
+    if [ -d "$cyberark_dir/tests" ]; then
+      (
+        cd "$cyberark_dir"
+        PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}" \
+          python -m pytest -v tests
+      )
+    fi
