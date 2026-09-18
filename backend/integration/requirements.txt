@@ -1,10 +1,3 @@
-azure-identity
-pytest
-azure-mgmt-compute
-azure-mgmt-storage
-azure-mgmt-sql
-azure-mgmt-web
-requests-mock
 pytest
 azure-identity
 azure-mgmt-compute
