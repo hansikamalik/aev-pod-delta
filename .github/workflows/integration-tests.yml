@@ -26,20 +26,20 @@ jobs:
           python -m pip install pytest requests-mock
 
       - name: Install integration dependencies
-        if: hashFiles('backend/integration/requirements.txt') != ''
         run: |
+          python -m pip install --upgrade pip
           python -m pip install -r backend/integration/requirements.txt
 
       - name: Run integration tests
         run: |
           python -m pytest -v backend/integration
 
-      - name: Run Azure normalization and platform push tests
+      - name: Run Azure Normalizaton and platform push tests
         shell: bash
         run: |
-          export PYTHONPATH="$GITHUB_WORKSPACE/backend/integration/Azure Normalization and Platform Push"
+          export PYTHONPATH="$GITHUB_WORKSPACE/backend/integration/Azure Normalizaton and Platform Push"
           python -m pytest -v \
-            "backend/integration/Azure Normalization and Platform Push/tests"
+            "backend/integration/Azure Normalizaton and Platform Push/tests"
 
       - name: Run CyberArk authentication tests
         shell: bash
@@ -47,3 +47,32 @@ jobs:
           export PYTHONPATH="$GITHUB_WORKSPACE/backend/integration/cyberark_auth_module"
           python -m pytest -v \
             backend/integration/cyberark_auth_module/tests
+
+      - name: Run Azure integration tests
+        working-directory: backend/integration/Azure Normalizaton and Platform Push
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend/integration/Azure Normalizaton and Platform Push
+        run: |
+          python -m pytest -v tests
+
+      - name: Run CyberArk integration tests
+        working-directory: backend/integration/cyberark-discovery-integration
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend/integration/cyberark-discovery-integration
+        run: |
+          python -m pytest -v tests
+
+      - name: Run integration QA tests
+        working-directory: backend/integration/integration-qa
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend/integration/integration-qa
+        run: |
+          python -m pytest -v --import-mode=importlib tests
+
+      - name: Run Vault tests
+        working-directory: backend/integration/vault-enterprise-framework
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend/integration/vault-enterprise-framework
+        run: |
+          python -m pytest -v scripts/test_migrate.py
+          
