@@ -5,14 +5,14 @@ on:
     branches:
       - develop
     paths:
-      - "backend/integration/**"
-      - ".github/workflows/integration.yml"
+      - 'backend/integration/**'
+      - '.github/workflows/integration.yml'
   pull_request:
     branches:
       - develop
     paths:
-      - "backend/integration/**"
-      - ".github/workflows/integration.yml"
+      - 'backend/integration/**'
+      - '.github/workflows/integration.yml'
 
 jobs:
   test-integration:
@@ -31,7 +31,7 @@ jobs:
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest
+          python -m pip install pytest requests-mock
 
       - name: Install integration dependencies
         if: hashFiles('backend/integration/requirements.txt') != ''
@@ -39,11 +39,7 @@ jobs:
 
       - name: Run integration tests
         shell: bash
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend/integration/Azure Normalization and Platform Push:${{ github.workspace }}/backend/integration/cyberark_auth_module
         run: |
-          if [ -d backend/integration/tests ]; then
-            PYTHONPATH=backend/integration python -m pytest -v backend/integration/tests
-          elif [ -d backend/integration/auth/tests ] || [ -d backend/integration/discovery/tests ]; then
-            PYTHONPATH=backend/integration python -m pytest -v backend/integration
-          else
-            echo "No integration tests found - skipping tests."
-          fi
+          python -m pytest -v backend/integration
