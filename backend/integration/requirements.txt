@@ -6,8 +6,6 @@ azure-mgmt-sql
 azure-mgmt-web
 requests-mock
 # Test/runtime dependencies used by the integration modules
-pytest
 requests-mock
 jsonschema
 requests
-requests-mock
