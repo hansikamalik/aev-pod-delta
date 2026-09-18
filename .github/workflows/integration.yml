@@ -40,6 +40,6 @@ jobs:
       - name: Run integration tests
         shell: bash
         env:
-          PYTHONPATH: ${{ github.workspace }}/backend/integration/Azure Normalization and Platform Push:${{ github.workspace }}/backend/integration/cyberark_auth_module
+          PYTHONPATH: ${{ github.workspace }}/backend/integration/Azure Normalizaton and Platform Push:${{ github.workspace }}/backend/integration/cyberark_auth_module
         run: |
           python -m pytest -v backend/integration
