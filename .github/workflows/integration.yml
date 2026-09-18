@@ -31,7 +31,7 @@ jobs:
       - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install pytest requests-mock
+          pip install pytest requests-mock
           pip install -r backend/integration/requirements.txt
 
       - name: Install integration dependencies
