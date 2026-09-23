@@ -1,0 +1,29 @@
+[
+  {
+    "id": "/subscriptions/33333333-3333-3333-3333-333333333333/resourceGroups/rg-prod-eu/providers/Microsoft.Sql/servers/sql-prod-01",
+    "name": "sql-prod-01",
+    "location": "westeurope",
+    "version": "12.0",
+    "state": "Ready",
+    "databases": [
+      {"name": "orders", "status": "Online", "tier": "Premium"},
+      {"name": "users", "status": "Online", "tier": "Standard"}
+    ],
+    "tlsMinimumVersion": "1.2",
+    "publicNetworkAccess": "Disabled",
+    "tags": {"env": "prod"}
+  },
+  {
+    "id": "/subscriptions/33333333-3333-3333-3333-333333333333/resourceGroups/rg-dev-in/providers/Microsoft.Sql/servers/sql-dev-01",
+    "name": "sql-dev-01",
+    "location": "centralindia",
+    "version": "12.0",
+    "state": "Ready",
+    "databases": [
+      {"name": "sandbox", "status": "Online", "tier": "Basic"}
+    ],
+    "tlsMinimumVersion": "1.0",
+    "publicNetworkAccess": "Enabled",
+    "tags": {"env": "dev"}
+  }
+]

@@ -1,0 +1,21 @@
+{
+  "id": "/subscriptions/a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d/resourceGroups/rg-db-prod/providers/Microsoft.Sql/servers/sql-primary-srv/databases/db-analytics-01",
+  "name": "db-analytics-01",
+  "type": "Microsoft.Sql/servers/databases",
+  "location": "eastus2",
+  "tags": {
+    "cost_center": "finance",
+    "criticality": "high"
+  },
+  "sku": {
+    "name": "GP_Gen5_2",
+    "tier": "GeneralPurpose",
+    "capacity": 2
+  },
+  "properties": {
+    "status": "Restoring",
+    "maxSizeBytes": null,
+    "collation": "SQL_Latin1_General_CP1_CI_AS",
+    "earliestRestoreDate": "2026-09-01T04:00:00Z"
+  }
+}

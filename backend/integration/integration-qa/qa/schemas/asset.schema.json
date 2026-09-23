@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "integration-squad/asset.schema.json",
+  "title": "Common Asset",
+  "description": "QA mirror of the Connector SDK Asset contract (contract_v2 §5-§9).",
+  "type": "object",
+  "required": ["id", "source", "type", "name", "raw", "discoveredAt"],
+  "additionalProperties": true,
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "source": {"type": "string", "minLength": 1},
+    "type": {
+      "type": "string",
+      "enum": ["compute", "storage", "identity", "network", "ticket", "detection", "other"]
+    },
+    "name": {"type": "string", "minLength": 1},
+    "raw": {"type": "object"},
+    "discoveredAt": {"type": "string", "format": "date-time"},
+    "tags": {"type": "object"}
+  }
+}

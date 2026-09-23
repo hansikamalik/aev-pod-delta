@@ -1,0 +1,28 @@
+instance_url: "https://dev12345.service-now.com"
+
+auth:
+  method: "basic"            # basic | oauth
+  username: ""               # leave empty to pull from Vault
+  password: ""               # leave empty to pull from Vault
+  oauth_client_id: ""
+  oauth_client_secret: ""
+
+vault:
+  enabled: true
+  path: "secret/data/connectors/servicenow"   # KV v2 path
+  username_key: "username"
+  password_key: "password"
+  client_id_key: "oauth_client_id"
+  client_secret_key: "oauth_client_secret"
+
+tables:
+  cmdb_ci: "cmdb_ci"
+  incident: "incident"
+
+push:
+  asset_url: "https://beta.aev.internal/api/v1/assets"
+  exposure_url: "https://beta.aev.internal/api/v1/exposures"
+
+batch_size: 200
+timeout_seconds: 30
+max_retries: 3

@@ -1,0 +1,8 @@
+# Editable install of the frozen SDK contract. Assumes connector_sdk is
+# a sibling directory in the same monorepo checkout.
+-e ../connector_sdk
+
+pydantic>=2.0
+requests>=2.31
+pytest>=8.0
+ruff>=0.5

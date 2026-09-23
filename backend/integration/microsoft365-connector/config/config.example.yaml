@@ -1,0 +1,37 @@
+# Microsoft 365 connector configuration.
+# Copy to config.yaml and fill in tenant-specific values (config.yaml is
+# gitignored). Secrets are never stored here — they're Vault paths.
+
+azure_ad:
+  tenant_id: "00000000-0000-0000-0000-000000000000"
+  client_id: "00000000-0000-0000-0000-000000000000"
+  # Vault path holding {"client_secret": "..."}
+  client_secret_vault_path: "secret/data/aev/connectors/microsoft365/azure_ad"
+  graph_api_base_url: "https://graph.microsoft.com/v1.0"
+  token_url: "https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
+  scope: "https://graph.microsoft.com/.default"
+
+platform:
+  api_base_url: "https://api.aev.internal"
+  # Vault path holding {"api_token": "..."}
+  api_token_vault_path: "secret/data/aev/connectors/microsoft365/platform"
+  ingest_endpoint: "/api/v1/assets/ingest"
+  findings_ingest_endpoint: "/api/v1/findings/ingest"
+  batch_size: 100
+
+vault:
+  addr: "https://vault.aev.internal"
+  # Vault token itself comes from the VAULT_TOKEN env var — never committed.
+
+sync:
+  discover_users: true
+  discover_groups: true
+  discover_devices: true
+  discover_domains: true
+  discover_licenses: true
+  discover_audit_logs: true
+  audit_log_lookback_hours: 24
+  page_size: 100
+
+logging:
+  level: "INFO"

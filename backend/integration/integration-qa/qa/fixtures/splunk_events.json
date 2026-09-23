@@ -1,0 +1,36 @@
+[
+  {
+    "index": "sec_events",
+    "sourcetype": "linux_secure",
+    "host": "vm-prod-web-01",
+    "_time": "2026-09-17T10:12:33+00:00",
+    "event": {
+      "action": "sshd_failed_password",
+      "src_ip": "203.0.113.7",
+      "user": "root",
+      "outcome": "failure"
+    }
+  },
+  {
+    "index": "sec_events",
+    "sourcetype": "windows_security",
+    "host": "vm-dev-build-01",
+    "_time": "2026-09-17T10:14:02+00:00",
+    "event": {
+      "action": "logon_success",
+      "user": "EXAMPLE\\\\svc-legacy",
+      "event_code": 4624
+    }
+  },
+  {
+    "index": "sec_events",
+    "sourcetype": "azure_audit",
+    "host": "azure-tenant",
+    "_time": "2026-09-17T10:15:47+00:00",
+    "event": {
+      "action": "Update network security group",
+      "actor": "priya.sharma@example.com",
+      "result": "success"
+    }
+  }
+]
