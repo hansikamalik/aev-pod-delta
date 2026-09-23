@@ -1,0 +1,25 @@
+[
+  {
+    "id": "aad:///users/u-1001",
+    "objectType": "user",
+    "displayName": "Priya Sharma",
+    "userPrincipalName": "priya.sharma@example.com",
+    "accountEnabled": true,
+    "jobTitle": "Security Analyst"
+  },
+  {
+    "id": "aad:///users/u-1002",
+    "objectType": "user",
+    "displayName": "Legacy Service Account",
+    "userPrincipalName": "svc-legacy@example.com",
+    "accountEnabled": false,
+    "jobTitle": null
+  },
+  {
+    "id": "aad:///servicePrincipals/sp-2001",
+    "objectType": "servicePrincipal",
+    "displayName": "ci-deployer",
+    "appId": "44444444-4444-4444-4444-444444444444",
+    "accountEnabled": true
+  }
+]

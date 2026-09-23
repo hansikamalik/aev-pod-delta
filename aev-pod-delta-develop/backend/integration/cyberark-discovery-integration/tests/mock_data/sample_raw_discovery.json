@@ -1,0 +1,14 @@
+[
+  {
+    "raw_username": "ADM_ServiceUser",
+    "host": "SRV-APP01.COMPANY.LOCAL",
+    "os_type": "Red Hat Enterprise Linux",
+    "ip": "10.20.30.40"
+  },
+  {
+    "raw_username": "krbtgt",
+    "host": "DC01.COMPANY.LOCAL",
+    "os_type": "Windows Server 2022",
+    "ip": "10.20.30.1"
+  }
+]

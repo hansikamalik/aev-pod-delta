@@ -1,0 +1,11 @@
+{
+  "excluded_usernames": ["guest", "krbtgt", "defaultaccount", "wdagutilityaccount"],
+  "platform_mappings": {
+    "Windows Server 2022": "WinServerLocal",
+    "Windows Server 2019": "WinServerLocal",
+    "Ubuntu Linux": "UnixSSH",
+    "Red Hat Enterprise Linux": "UnixSSH",
+    "Amazon Linux": "UnixSSH"
+  },
+  "default_platform": "GenericPlatform"
+}

@@ -1,0 +1,29 @@
+[
+  {
+    "id": "/subscriptions/33333333-3333-3333-3333-333333333333/resourceGroups/rg-prod-eu/providers/Microsoft.Compute/virtualMachines/vm-prod-web-01",
+    "name": "vm-prod-web-01",
+    "location": "westeurope",
+    "vmSize": "Standard_D2s_v3",
+    "osType": "Linux",
+    "powerState": "running",
+    "tags": {"env": "prod", "team": "platform"}
+  },
+  {
+    "id": "/subscriptions/33333333-3333-3333-3333-333333333333/resourceGroups/rg-prod-eu/providers/Microsoft.Compute/virtualMachines/vm-prod-web-02",
+    "name": "vm-prod-web-02",
+    "location": "westeurope",
+    "vmSize": "Standard_D2s_v3",
+    "osType": "Linux",
+    "powerState": "stopped",
+    "tags": {"env": "prod", "team": "platform"}
+  },
+  {
+    "id": "/subscriptions/33333333-3333-3333-3333-333333333333/resourceGroups/rg-dev-in/providers/Microsoft.Compute/virtualMachines/vm-dev-build-01",
+    "name": "vm-dev-build-01",
+    "location": "centralindia",
+    "vmSize": "Standard_B2s",
+    "osType": "Windows",
+    "powerState": "running",
+    "tags": {"env": "dev", "team": "ci"}
+  }
+]

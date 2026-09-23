@@ -1,0 +1,56 @@
+name: AI Context CI
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'backend/ai-context/**'
+      - '.github/workflows/ai-context.yml'
+
+  pull_request:
+    branches:
+      - develop
+    paths:
+      - 'backend/ai-context/**'
+      - '.github/workflows/ai-context.yml'
+
+jobs:
+  validate:
+    name: Validate AI Context
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check AI Context directory
+        shell: bash
+        run: |
+          if [ -d backend/ai-context ]; then
+            echo "AI Context directory exists."
+          else
+            echo "ERROR: backend/ai-context directory not found."
+            exit 1
+          fi
+
+      - name: Check for Python project
+        shell: bash
+        run: |
+          if [ -f backend/ai-context/requirements.txt ]; then
+            echo "requirements.txt found."
+            python -m pip install --upgrade pip
+            pip install -r backend/ai-context/requirements.txt
+          else
+            echo "No requirements.txt found - dependency installation skipped."
+          fi
+
+      - name: Run tests if available
+        shell: bash
+        run: |
+          if [ -d backend/ai-context/tests ]; then
+            python -m pip install pytest
+            python -m pytest -v backend/ai-context/tests
+          else
+            echo "No AI Context tests found - skipping tests."
+          fi

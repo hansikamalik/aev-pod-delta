@@ -1,0 +1,24 @@
+{
+  "id": "/subscriptions/a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d/resourceGroups/rg-storage-sec/providers/Microsoft.Storage/storageAccounts/stlogssecprod01",
+  "name": "stlogssecprod01",
+  "type": "Microsoft.Storage/storageAccounts",
+  "location": "westeurope",
+  "tags": {},
+  "sku": {
+    "name": "Standard_GRS",
+    "tier": "Standard"
+  },
+  "kind": "StorageV2",
+  "properties": {
+    "supportsHttpsTrafficOnly": true,
+    "encryption": {
+      "keySource": "Microsoft.Storage",
+      "services": {
+        "blob": {
+          "enabled": true
+        }
+      }
+    },
+    "provisioningState": "Succeeded"
+  }
+}
