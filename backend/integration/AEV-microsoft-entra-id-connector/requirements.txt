@@ -1,0 +1,4 @@
+requests>=2.31
+hvac>=2.0          # HashiCorp Vault client (fallback to env vars if absent)
+PyYAML>=6.0
+pytest>=8.0
