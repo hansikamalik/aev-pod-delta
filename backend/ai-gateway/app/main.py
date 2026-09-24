@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
 from app.citations import router as citations_router
@@ -10,6 +10,7 @@ from app.cost_tracker import CostTracker
 from app.guardrails import Guardrails
 from app.rate_limiter import check_rate_limit
 from app.token_tracker import TokenTracker
+from app.audit_log import setup_database, log_interaction, update_fact_check, cleanup_expired_rows
 
 
 app = FastAPI(
@@ -18,6 +19,10 @@ app = FastAPI(
     version=getattr(settings, "VERSION", "2.0"),
 )
 
+@app.on_event("startup")
+def startup_event():
+    setup_database()
+
 app.include_router(citations_router)
 
 guardrails = Guardrails()
@@ -25,6 +30,11 @@ guardrails = Guardrails()
 
 class QueryRequest(BaseModel):
     question: str
+
+class FactCheckRequest(BaseModel):
+    interaction_id: str
+    fact_check_passed: bool
+    details: Optional[str] = None
 
 
 @app.get("/")
@@ -49,17 +59,6 @@ def query(
 ):
     """
     Main AI Copilot query endpoint.
-
-    Week 3 guardrail flow:
-    1. Check rate limit.
-    2. Check prompt injection and blocked topics.
-    3. Redact input PII.
-    4. Send sanitized prompt to the LLM.
-    5. Extract token usage.
-    6. Calculate estimated cost.
-    7. Redact output PII.
-    8. Add AI-generated disclaimer.
-    9. Enforce maximum response length.
     """
 
     rate_info = check_rate_limit(user_id=x_user_id)
@@ -97,8 +96,20 @@ def query(
     output_was_redacted = redacted_answer != raw_answer
 
     safe_answer = guardrails.process_output(raw_answer)
+    citations = result.get("citations", [])
+
+    # Week 2: Audit log wiring (Insert row per interaction)
+    interaction_id = log_interaction(
+        user_id=x_user_id,
+        prompt=sanitized_question,
+        response=safe_answer,
+        tokens=usage["total_tokens"],
+        cost=cost_info["total_cost"],
+        citations=citations
+    )
 
     return {
+        "interaction_id": interaction_id,
         "question": sanitized_question,
         "answer": safe_answer,
         "model": result.get("model", "unknown"),
@@ -112,3 +123,15 @@ def query(
             "max_output_length": guardrails.max_output_length,
         },
     }
+
+@app.post("/webhooks/fact-check")
+def fact_check_hook(payload: FactCheckRequest):
+    """Week 3: Callback/endpoint AI Context's fact-check pass can call against."""
+    update_fact_check(payload.interaction_id, payload.fact_check_passed, payload.details)
+    return {"status": "success", "message": "Fact check result recorded"}
+
+@app.post("/admin/retention-cleanup")
+def retention_cleanup(background_tasks: BackgroundTasks):
+    """Week 2: 1-year retention policy cleanup job for expired rows."""
+    background_tasks.add_task(cleanup_expired_rows)
+    return {"status": "success", "message": "Retention cleanup job started in background"}

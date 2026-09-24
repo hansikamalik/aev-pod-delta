@@ -1,3 +1,12 @@
--- Week 1 migration stub
--- AI Gateway: ai_interactions table
--- Full schema and database wiring will be implemented in a later week.
+CREATE TABLE IF NOT EXISTS ai_interactions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT,
+    prompt TEXT,
+    response TEXT,
+    total_tokens INTEGER,
+    cost REAL,
+    citations TEXT,
+    fact_check_passed BOOLEAN,
+    fact_check_details TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
