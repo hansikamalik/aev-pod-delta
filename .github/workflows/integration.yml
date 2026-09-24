@@ -258,5 +258,19 @@ jobs:
             fi
           done
 
+- name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest requests-mock jsonschema httpx
+          if [ -f "backend/integration/requirements.txt" ]; then
+            pip install -r backend/integration/requirements.txt
+          fi
+
+      - name: Run integration tests
+        shell: bash
+        run: |
+          python -m pytest -v --import-mode=importlib backend/integration
+
+
 
 
