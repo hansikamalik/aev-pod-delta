@@ -246,7 +246,17 @@ jobs:
         run: |
           python -m pytest -v scripts/test_migrate.py
           
-
+- name: Run integration tests
+        shell: bash
+        run: |
+          for dir in backend/integration/*/; do
+            if [ -d "$dir/tests" ]; then
+              echo "--------------------------------------------------"
+              echo "Running tests in: $dir"
+              echo "--------------------------------------------------"
+              PYTHONPATH="$GITHUB_WORKSPACE/$dir" python -m pytest -v "$dir/tests"
+            fi
+          done
 
 
 
