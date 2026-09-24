@@ -104,7 +104,7 @@ def query(
         prompt=sanitized_question,
         response=safe_answer,
         tokens=usage["total_tokens"],
-        cost=cost_info["total_cost"],
+        cost=cost_info["estimated_cost"],
         citations=citations
     )
 
