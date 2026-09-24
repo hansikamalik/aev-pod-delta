@@ -1,0 +1,15 @@
+# Example value for `integrations.config` (JSONB) when registering this
+# connector via POST /integrations with connector_type=active_directory.
+ldap_server: "dc01.corp.example.com"
+ldap_port: 636
+use_ssl: true
+bind_dn: "CN=svc-aev-sync,OU=Service Accounts,DC=corp,DC=example,DC=com"
+base_dn: "DC=corp,DC=example,DC=com"
+user_search_base: "OU=Users,DC=corp,DC=example,DC=com"
+user_search_filter: "(&(objectClass=user)(objectCategory=person))"
+group_search_base: "OU=Groups,DC=corp,DC=example,DC=com"
+group_search_filter: "(objectClass=group)"
+sync_groups: true
+page_size: 500
+connect_timeout_seconds: 10.0
+receive_timeout_seconds: 30.0
