@@ -1,0 +1,1 @@
+"""AEV Platform connector catalog."""
