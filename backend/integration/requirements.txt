@@ -6,3 +6,6 @@ azure-mgmt-storage
 azure-mgmt-sql
 azure-mgmt-web
 jsonschema>=4.0.0
+pydantic>=2
+hvac
+requests
