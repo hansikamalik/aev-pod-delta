@@ -1,8 +1,0 @@
-# Path/editable install of the frozen SDK contract — adjust the path if
-# vendoring this differently in the monorepo.
--e ../connector_sdk
-
-pydantic>=2.0
-google-auth>=2.29
-google-api-python-client>=2.130
-pytest>=8.0
