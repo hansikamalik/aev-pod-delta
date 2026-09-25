@@ -30,6 +30,13 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r backend/integration/requirements.txt
 
+      - name: Install local integration packages
+        shell: bash
+        run: |
+          python -m pip install -e "backend/integration/<connector-sdk-project>"
+          python -m pip install -e "backend/integration/<github-connector-project>"
+          python -m pip install -e "backend/integration/<servicenow-connector-project>"
+
       - name: Run integration tests
         shell: bash
         env:
@@ -80,4 +87,19 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/backend/integration/vault-enterprise-framework
         run: |
           python -m pytest -v scripts/test_migrate.py
-          
+
+      - name: Test GoogleWorkspace connector
+        working-directory: backend/integration/google-workspace-connector
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend/integration/google-workspace-connector
+        run: |
+          python -m pip install -e .
+          python -m pytest -v --import-mode=importlib tests
+
+      - name: Test Microsoft365 connector
+        working-directory: backend/integration/microsoft365-connector
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend/integration/microsoft365-connector
+        run: |
+          python -m pip install -e .
+          python -m pytest -v --import-mode=importlib tests
