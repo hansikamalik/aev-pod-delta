@@ -12,30 +12,43 @@ except ImportError:
     import rate_limiter  # noqa: E402
 
 
-def make_mock_redis(current_count):
-    mock = MagicMock()
-    mock.incr.return_value = current_count
-    mock.ttl.return_value = 45
-    return mock
+def make_mock_script(return_value):
+    """Mock the Lua script callable that check_rate_limit invokes."""
+    mock_script = MagicMock(return_value=return_value)
+    return mock_script
 
 
-def test_first_request_is_allowed():
-    mock_redis = make_mock_redis(current_count=1)
-    with patch.object(rate_limiter, "redis_client", mock_redis):
+def test_request_is_allowed_when_tokens_available():
+    # allowed=1, tokens_remaining=7 (bucket had room)
+    mock_script = make_mock_script([1, 7])
+    with patch.object(rate_limiter, "_token_bucket", mock_script):
         result = rate_limiter.check_rate_limit("alice")
-    assert result["requests_made"] == 1
+    assert result["allowed"] is True
+    assert result["tokens_remaining"] == 7
 
 
-def test_fifth_request_is_still_allowed():
-    mock_redis = make_mock_redis(current_count=5)
-    with patch.object(rate_limiter, "redis_client", mock_redis):
+def test_request_allowed_on_last_token():
+    # allowed=1, tokens_remaining=0 (used the last token, still allowed)
+    mock_script = make_mock_script([1, 0])
+    with patch.object(rate_limiter, "_token_bucket", mock_script):
         result = rate_limiter.check_rate_limit("alice")
-    assert result["requests_made"] == 5
+    assert result["allowed"] is True
+    assert result["tokens_remaining"] == 0
 
 
-def test_sixth_request_is_blocked():
-    mock_redis = make_mock_redis(current_count=6)
-    with patch.object(rate_limiter, "redis_client", mock_redis):
+def test_request_is_blocked_when_bucket_empty():
+    # allowed=0, tokens_remaining=0 (no tokens left, request rejected)
+    mock_script = make_mock_script([0, 0])
+    with patch.object(rate_limiter, "_token_bucket", mock_script):
         with pytest.raises(HTTPException) as exc_info:
             rate_limiter.check_rate_limit("alice")
     assert exc_info.value.status_code == 429
+
+
+def test_redis_unavailable_falls_back_gracefully():
+    import redis as redis_module
+    mock_script = MagicMock(side_effect=redis_module.exceptions.ConnectionError)
+    with patch.object(rate_limiter, "_token_bucket", mock_script):
+        result = rate_limiter.check_rate_limit("alice")
+    assert result["allowed"] is True
+    assert result["warning"] == "Redis unavailable"
