@@ -3,9 +3,6 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-client = TestClient(app)
-
-
 def test_copilot_query_end_to_end(monkeypatch):
     """Test the complete /copilot/query request flow."""
 
@@ -31,13 +28,14 @@ def test_copilot_query_end_to_end(monkeypatch):
     monkeypatch.setattr("app.main.ask_gpt", mock_ask_gpt)
     monkeypatch.setattr("app.main.check_rate_limit", mock_rate_limit)
 
-    response = client.post(
-        "/copilot/query",
-        headers={"X-User-ID": "test-user"},
-        json={
-            "question": "Explain what a firewall does."
-        },
-    )
+    with TestClient(app) as client:
+        response = client.post(
+            "/copilot/query",
+            headers={"X-User-ID": "test-user"},
+            json={
+                "question": "Explain what a firewall does."
+            },
+        )
 
     assert response.status_code == 200
 
