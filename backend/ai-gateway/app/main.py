@@ -10,8 +10,12 @@ from app.cost_tracker import CostTracker
 from app.guardrails import Guardrails
 from app.rate_limiter import check_rate_limit
 from app.token_tracker import TokenTracker
-from app.audit_log import setup_database, log_interaction, update_fact_check, cleanup_expired_rows
-
+from app.audit_log import (
+    setup_database,
+    log_interaction,
+    update_fact_check,
+    cleanup_expired_rows,
+)
 
 app = FastAPI(
     title=getattr(settings, "APP_NAME", "AI Gateway Service"),
@@ -19,17 +23,21 @@ app = FastAPI(
     version=getattr(settings, "VERSION", "2.0"),
 )
 
+
 @app.on_event("startup")
 def startup_event():
     setup_database()
 
+
 app.include_router(citations_router)
+
 
 guardrails = Guardrails()
 
 
 class QueryRequest(BaseModel):
     question: str
+
 
 class FactCheckRequest(BaseModel):
     interaction_id: str
@@ -124,11 +132,13 @@ def query(
         },
     }
 
+
 @app.post("/webhooks/fact-check")
 def fact_check_hook(payload: FactCheckRequest):
     """Week 3: Callback/endpoint AI Context's fact-check pass can call against."""
     update_fact_check(payload.interaction_id, payload.fact_check_passed, payload.details)
     return {"status": "success", "message": "Fact check result recorded"}
+
 
 @app.post("/admin/retention-cleanup")
 def retention_cleanup(background_tasks: BackgroundTasks):

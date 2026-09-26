@@ -21,7 +21,7 @@ def check_rate_limit(user_id: str):
     """
     key = f"rate_limit:{user_id}"       # Unique Redis key per user
 
-    try: 
+    try:
         current_count = redis_client.incr(key)
         if current_count == 1:
             redis_client.expire(key, WINDOW_SECONDS)

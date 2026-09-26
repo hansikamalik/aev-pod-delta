@@ -15,7 +15,8 @@ import os  # noqa: E402
 def setup_database():
     """Run migrations to ensure tables exist."""
     migration_path = os.path.join(
-        os.path.dirname(__file__), "..", "migrations", "001_create_ai_interactions.sql"
+        os.path.dirname(__file__), "..", "migrations",
+        "001_create_ai_interactions.sql"
     )
     with _get_connection() as conn:
         with open(migration_path, "r") as f:
@@ -23,7 +24,8 @@ def setup_database():
         conn.commit()
 
 
-def log_interaction(user_id: str, prompt: str, response: str, tokens: int, cost: float, citations: list):
+def log_interaction(user_id: str, prompt: str, response: str,
+                    tokens: int, cost: float, citations: list):
     """Insert a row per interaction."""
     interaction_id = str(uuid.uuid4())
     with _get_connection() as conn:
@@ -33,7 +35,8 @@ def log_interaction(user_id: str, prompt: str, response: str, tokens: int, cost:
                 (id, user_id, prompt, response, total_tokens, cost, citations)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
             """,
-            (interaction_id, user_id, prompt, response, tokens, cost, json.dumps(citations or [])),
+            (interaction_id, user_id, prompt, response, tokens, cost,
+             json.dumps(citations or [])),
         )
         conn.commit()
     return interaction_id
