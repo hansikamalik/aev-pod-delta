@@ -64,12 +64,13 @@ async def health():
 def query(
     request: QueryRequest,
     x_user_id: Optional[str] = Header(default="anonymous"),
+    x_org_tier: Optional[str] = Header(default="free"),
 ):
     """
     Main AI Copilot query endpoint.
     """
 
-    rate_info = check_rate_limit(user_id=x_user_id)
+    rate_info = check_rate_limit(user_id=x_user_id, org_tier=x_org_tier)
     if not rate_info["allowed"]:
         raise HTTPException(
             status_code=429,

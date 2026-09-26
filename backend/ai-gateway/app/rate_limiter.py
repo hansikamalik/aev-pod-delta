@@ -10,9 +10,15 @@ redis_client = redis.from_url(
     socket_connect_timeout=1.0
 )
 
-# Token bucket settings
-BUCKET_CAPACITY = 8        # Max tokens a user can save up (allows a burst)
-REFILL_RATE = 5 / 60       # Tokens added per second (5 per 60s, same long-term average as before)
+# Per-org tier limits: (bucket capacity, tokens refilled per second).
+# Real tier lookup belongs to a future billing/org service -- this is a
+# placeholder mapping, same pattern as permissions.py's role handling.
+TIER_LIMITS = {
+    "free": (8, 5 / 60),
+    "pro": (40, 20 / 60),
+    "enterprise": (200, 100 / 60),
+}
+DEFAULT_TIER = "free"
 
 # Lua script: read bucket state, refill it based on elapsed time, try to
 # spend 1 token. Runs atomically in Redis so concurrent requests can't
@@ -49,24 +55,34 @@ return {allowed, tokens}
 _token_bucket = redis_client.register_script(_TOKEN_BUCKET_SCRIPT)
 
 
-def check_rate_limit(user_id: str):
+def get_tier_limits(tier: str):
+    """Look up bucket capacity + refill rate for an org tier.
+
+    Unknown or missing tiers fall back to the free tier -- this keeps
+    behavior safe until a real org/tier service (Pod Alpha) exists.
+    """
+    return TIER_LIMITS.get(tier, TIER_LIMITS[DEFAULT_TIER])
+
+
+def check_rate_limit(user_id: str, org_tier: str = DEFAULT_TIER):
     """
     Check if a user has exceeded their rate limit, using a token-bucket
     algorithm so a short burst of requests is allowed instead of an
-    instant hard block, while the long-term average rate stays the same.
+    instant hard block. Bucket size depends on the caller's org tier.
     Includes graceful degradation if Redis is offline locally.
     """
+    capacity, refill_rate = get_tier_limits(org_tier)
     key = f"rate_limit:{user_id}"
     now = time.time()
 
     try:
         allowed, tokens_remaining = _token_bucket(
             keys=[key],
-            args=[BUCKET_CAPACITY, REFILL_RATE, now],
+            args=[capacity, refill_rate, now],
         )
 
         if not allowed:
-            retry_after = round((1 - tokens_remaining) / REFILL_RATE)
+            retry_after = round((1 - tokens_remaining) / refill_rate)
             raise HTTPException(
                 status_code=429,
                 detail={
@@ -80,7 +96,8 @@ def check_rate_limit(user_id: str):
         return {
             "allowed": True,
             "tokens_remaining": round(tokens_remaining, 2),
-            "bucket_capacity": BUCKET_CAPACITY,
+            "bucket_capacity": capacity,
+            "org_tier": org_tier,
         }
     except (
         redis.exceptions.ConnectionError,
@@ -90,7 +107,8 @@ def check_rate_limit(user_id: str):
         # Graceful fallback when running locally without active Redis daemon
         return {
             "allowed": True,
-            "tokens_remaining": BUCKET_CAPACITY - 1,
-            "bucket_capacity": BUCKET_CAPACITY,
+            "tokens_remaining": capacity - 1,
+            "bucket_capacity": capacity,
+            "org_tier": org_tier,
             "warning": "Redis unavailable"
         }

@@ -1,6 +1,8 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+)
 
 from unittest.mock import patch, MagicMock  # noqa: E402
 from fastapi import HTTPException  # noqa: E402
@@ -47,8 +49,32 @@ def test_request_is_blocked_when_bucket_empty():
 
 def test_redis_unavailable_falls_back_gracefully():
     import redis as redis_module
-    mock_script = MagicMock(side_effect=redis_module.exceptions.ConnectionError)
+    mock_script = MagicMock(
+        side_effect=redis_module.exceptions.ConnectionError
+    )
     with patch.object(rate_limiter, "_token_bucket", mock_script):
         result = rate_limiter.check_rate_limit("alice")
     assert result["allowed"] is True
     assert result["warning"] == "Redis unavailable"
+def test_free_tier_gets_default_capacity():
+    mock_script = make_mock_script([1, 7])
+    with patch.object(rate_limiter, "_token_bucket", mock_script):
+        result = rate_limiter.check_rate_limit("alice", org_tier="free")
+    assert result["bucket_capacity"] == 8
+    assert result["org_tier"] == "free"
+
+
+def test_enterprise_tier_gets_larger_capacity():
+    mock_script = make_mock_script([1, 199])
+    with patch.object(rate_limiter, "_token_bucket", mock_script):
+        result = rate_limiter.check_rate_limit("alice", org_tier="enterprise")
+    assert result["bucket_capacity"] == 200
+    assert result["org_tier"] == "enterprise"
+
+
+def test_unknown_tier_falls_back_to_free():
+    mock_script = make_mock_script([1, 7])
+    with patch.object(rate_limiter, "_token_bucket", mock_script):
+        result = rate_limiter.check_rate_limit("alice", org_tier="made_up_tier")
+    assert result["bucket_capacity"] == 8
+    assert result["org_tier"] == "made_up_tier"
