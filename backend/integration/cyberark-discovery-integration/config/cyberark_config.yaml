@@ -1,1 +1,16 @@
+cyberark:
+  pvwa_url: "https://pvwa.company.local/PasswordVault"
+  verify_ssl: true
+  auth_type: "CyberArk" # Options: CyberArk, LDAP, Windows
+  concurrent_requests: 5
 
+defaults:
+  safe_name: "PAM-Discovered-Accounts"
+  platform_id: "WinServerLocal"
+  reconcile_account_id: ""
+
+api_endpoints:
+  auth: "/api/auth/Logon"
+  discovered_accounts: "/api/DiscoveredAccounts"
+  accounts: "/api/Accounts"
+  verify: "/api/Accounts/{id}/Verify"

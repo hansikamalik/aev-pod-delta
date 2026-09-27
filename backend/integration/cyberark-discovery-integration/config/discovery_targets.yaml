@@ -1,0 +1,8 @@
+ldap:
+  server: "ldap://dc1.company.local"
+  base_dn: "OU=Servers,DC=company,DC=local"
+  search_filter: "(&(objectClass=user)(sAMAccountName=adm_*))"
+
+cloud:
+  providers: ["aws", "azure"]
+  aws_regions: ["us-east-1", "us-west-2"]
