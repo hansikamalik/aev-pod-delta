@@ -127,7 +127,7 @@ def query(
         )
 
         if tool_call["ok"]:
-            citations = [tool_call["result"]["citation"]]
+            citations = tool_call.get("citations", [])
             question_for_model = (
                 f"{sanitized_question}\n\n"
                 "Verified data from the risk_score_get tool "
@@ -136,7 +136,7 @@ def query(
             )
 
     result = ask_gpt(question_for_model)
-
+    citations = citations + result.get("citations", [])
     usage = TokenTracker.extract_usage(result)
 
     cost_info = CostTracker.calculate_cost(
