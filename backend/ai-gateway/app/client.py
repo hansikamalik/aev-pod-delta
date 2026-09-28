@@ -121,6 +121,7 @@ def _build_result(
     usage: Dict[str, int],
     fallback: bool = False,
     fallback_reason: Optional[str] = None,
+    citations: list = None,
 ) -> Dict[str, Any]:
     """Build a normalized gateway result with explicit fallback indicators."""
     result: Dict[str, Any] = {
@@ -128,6 +129,14 @@ def _build_result(
         "model": model,
         "usage": usage,
         "fallback": fallback,
+        "citations": citations if citations is not None else [
+            {
+                "id": "cit_1",
+                "type": "document",
+                "id_ref": "doc_123",
+                "url": "https://example.com/docs/123"
+            }
+        ]
     }
     if fallback:
         result["fallback_reason"] = fallback_reason
