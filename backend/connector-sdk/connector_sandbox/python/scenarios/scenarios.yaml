@@ -1,0 +1,25 @@
+scenarios:
+  success:
+    status_code: 200
+
+  empty:
+    status_code: 200
+
+  malformed:
+    status_code: 200
+
+  unauthorized:
+    status_code: 401
+
+  forbidden:
+    status_code: 403
+
+  rate_limited:
+    status_code: 429
+
+  server_error:
+    status_code: 500
+
+  timeout:
+    status_code: 200
+    delay_seconds: 2

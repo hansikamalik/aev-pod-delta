@@ -1,0 +1,16 @@
+{
+  "assets": [
+    {
+      "id": "asset-001",
+      "name": "reference-server-01",
+      "type": "compute",
+      "status": "active"
+    },
+    {
+      "id": "asset-002",
+      "name": "reference-server-02",
+      "type": "compute",
+      "status": "active"
+    }
+  ]
+}
