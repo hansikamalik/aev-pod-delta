@@ -34,7 +34,7 @@ logger.setLevel(logging.INFO)
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
 COLAB_GEMMA_URL = os.getenv("COLAB_GEMMA_URL", "").strip()
-GOOGLE_MODEL = os.getenv("GOOGLE_MODEL", "gemma-4-31b-it").strip()
+GOOGLE_MODEL = "gemma-4-31b-it"
 
 USE_COLAB_GEMMA = bool(COLAB_GEMMA_URL)
 USE_GEMMA_GOOGLE = bool(GOOGLE_API_KEY)

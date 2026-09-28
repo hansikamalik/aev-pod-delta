@@ -123,7 +123,7 @@ class Guardrails:
 
         # 4. International & Standard Phone Numbers (10-15 digits)
         text = re.sub(
-            r"(?:\+\d{1,3}[-.\s]?)?(?:\(?\d{2,5}\)?[-.\s]?)?\d{3,5}[-.\s]?\d{3,5}\b",
+            r"(?:\+\d{1,3}[-.\s]?(?:\(\d{2,5}\)[-.\s]?)?|\(\d{2,5}\)[-.\s]?)\d{3,5}[-.\s]?\d{3,5}\b",
             lambda match: (
                 "[REDACTED_PHONE]"
                 if 10 <= len(re.sub(r"\D", "", match.group())) <= 15

@@ -177,6 +177,8 @@ def query(
             "disclaimer_added": True,
             "max_output_length": guardrails.max_output_length,
         },
+        "fallback_used": result.get("fallback", False),
+        "fallback_reason": result.get("fallback_reason"),
     }
 
 

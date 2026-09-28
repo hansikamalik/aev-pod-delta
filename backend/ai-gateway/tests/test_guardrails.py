@@ -96,6 +96,14 @@ def test_phone_is_redacted_from_input(guardrails):
     assert "[REDACTED_PHONE]" in result["text"]
 
 
+def test_order_id_is_not_redacted_as_phone(guardrails):
+    text = "Order ID: 123-456-7890 and Employee ID 9988776655"
+    result = guardrails.process_input(text)
+
+    assert "123-456-7890" in result["text"]
+    assert "9988776655" in result["text"]
+    assert "[REDACTED_PHONE]" not in result["text"]
+
 def test_credit_card_is_redacted_from_input(guardrails):
     text = "My card number is 4111 1111 1111 1111."
 
