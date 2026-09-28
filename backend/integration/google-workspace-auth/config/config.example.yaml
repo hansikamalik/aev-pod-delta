@@ -1,0 +1,8 @@
+google_workspace:
+  token_url: "https://oauth2.googleapis.com/token"
+  scopes:
+    - "https://www.googleapis.com/auth/admin.directory.user.readonly"
+  token_lifetime_seconds: 3600
+  clock_skew_seconds: 60
+  service_account_email: "service-account@example.iam.gserviceaccount.com"
+  delegated_subject: "admin@example.com"
