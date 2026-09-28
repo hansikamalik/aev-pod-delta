@@ -1,3 +1,5 @@
+import json
+import re
 from typing import Optional
 
 from fastapi import FastAPI, Header, HTTPException, BackgroundTasks
@@ -8,8 +10,11 @@ from app.client import ask_gpt
 from app.config import settings
 from app.cost_tracker import CostTracker
 from app.guardrails import Guardrails
+from app.permissions import is_allowed  
 from app.rate_limiter import check_rate_limit
 from app.token_tracker import TokenTracker
+from app.tools import dispatch_tool
+from app import mock_tools  # noqa: F401  (registers the mock tools)
 from app.audit_log import (
     setup_database,
     log_interaction,
@@ -33,6 +38,9 @@ app.include_router(citations_router)
 
 
 guardrails = Guardrails()
+
+# Demo phase: a question that mentions an asset ID triggers the risk tool.
+ASSET_ID_PATTERN = re.compile(r"\basset-\d+\b", re.IGNORECASE)
 
 
 class QueryRequest(BaseModel):
@@ -65,6 +73,7 @@ def query(
     request: QueryRequest,
     x_user_id: Optional[str] = Header(default="anonymous"),
     x_org_tier: Optional[str] = Header(default="free"),
+    x_user_role: Optional[str] = Header(default="anonymous"),
 ):
     """
     Main AI Copilot query endpoint.
@@ -90,7 +99,43 @@ def query(
 
     sanitized_question = input_result["text"]
 
-    result = ask_gpt(sanitized_question)
+        # Tool step (mock data for now): if the question names an asset,
+    # fetch its risk score through the RBAC-checked dispatcher.
+    tool_call = None
+    citations = []
+    question_for_model = sanitized_question
+
+    match = ASSET_ID_PATTERN.search(sanitized_question)
+    if match:
+        if not is_allowed(x_user_role, "risk_score_get"):
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "error": "Permission denied",
+                    "reason": (
+                        f"Role '{x_user_role}' is not permitted "
+                        "to use 'risk_score_get'."
+                    ),
+                },
+            )
+
+        tool_call = dispatch_tool(
+            "risk_score_get",
+            {"asset_id": match.group(0).lower()},
+            user_id=x_user_id,
+            role=x_user_role,
+        )
+
+        if tool_call["ok"]:
+            citations = [tool_call["result"]["citation"]]
+            question_for_model = (
+                f"{sanitized_question}\n\n"
+                "Verified data from the risk_score_get tool "
+                "(answer using only this data):\n"
+                f"{json.dumps(tool_call['result'])}"
+            )
+
+    result = ask_gpt(question_for_model)
 
     usage = TokenTracker.extract_usage(result)
 
@@ -105,7 +150,6 @@ def query(
     output_was_redacted = redacted_answer != raw_answer
 
     safe_answer = guardrails.process_output(raw_answer)
-    citations = result.get("citations", [])
 
     # Week 2: Audit log wiring (Insert row per interaction)
     interaction_id = log_interaction(
@@ -123,6 +167,8 @@ def query(
         "answer": safe_answer,
         "model": result.get("model", "unknown"),
         "usage": usage,
+        "tool_call": tool_call,
+        "citations": citations,
         "cost": cost_info,
         "rate_limit": rate_info,
         "guardrails": {
