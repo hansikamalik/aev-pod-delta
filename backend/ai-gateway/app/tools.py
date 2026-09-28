@@ -260,10 +260,14 @@ def dispatch_tool(
     return {
         "tool": tool_name,
         "ok": True,
-        "result": result.get("result", result) if isinstance(result, dict) and "result" in result else result,
+        "result": (
+            result.get("result", result)
+            if isinstance(result, dict) and "result" in result
+            else result
+        ),
         "error": None,
         "citations": (
-            result.get("citations") if isinstance(result, dict) and "citations" in result 
+            result.get("citations") if isinstance(result, dict) and "citations" in result
             else ([result["citation"]] if isinstance(result, dict) and "citation" in result else [])
         ),
     }
