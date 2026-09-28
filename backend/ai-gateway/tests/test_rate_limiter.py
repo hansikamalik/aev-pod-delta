@@ -56,6 +56,8 @@ def test_redis_unavailable_falls_back_gracefully():
         result = rate_limiter.check_rate_limit("alice")
     assert result["allowed"] is True
     assert result["warning"] == "Redis unavailable"
+
+
 def test_free_tier_gets_default_capacity():
     mock_script = make_mock_script([1, 7])
     with patch.object(rate_limiter, "_token_bucket", mock_script):

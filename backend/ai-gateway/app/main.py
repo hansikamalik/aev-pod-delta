@@ -10,7 +10,7 @@ from app.client import ask_gpt
 from app.config import settings
 from app.cost_tracker import CostTracker
 from app.guardrails import Guardrails
-from app.permissions import is_allowed  
+from app.permissions import is_allowed
 from app.rate_limiter import check_rate_limit
 from app.token_tracker import TokenTracker
 from app.tools import dispatch_tool
@@ -99,7 +99,7 @@ def query(
 
     sanitized_question = input_result["text"]
 
-        # Tool step (mock data for now): if the question names an asset,
+    # Tool step (mock data for now): if the question names an asset,
     # fetch its risk score through the RBAC-checked dispatcher.
     tool_call = None
     citations = []
