@@ -1,0 +1,11 @@
+{
+  "customer_id": "my_customer",
+  "domain": "example.com",
+  "admin_user": "admin@example.com",
+  "sync": {
+    "users": true,
+    "audit_logs": true,
+    "audit_application": "login",
+    "page_size": 100
+  }
+}
