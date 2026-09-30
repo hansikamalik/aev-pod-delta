@@ -27,12 +27,18 @@ app = FastAPI(
     description="AI Gateway Backend for AEV Platform",
     version=getattr(settings, "VERSION", "2.0"),
 )
+# Week 2: Fallback Monitoring Metrics Store
+fallback_metrics = {
+    "total_requests": 0,
+    "fallback_count": 0,
+    "fallback_reasons": {}
+}
 
 
 @app.on_event("startup")
 def startup_event():
-    setup_database()
-
+   # setup_database()
+    pass
 
 app.include_router(citations_router)
 
@@ -160,6 +166,14 @@ def query(
         cost=cost_info["estimated_cost"],
         citations=citations
     )
+    # Track metrics for Week 2 Fallback Monitoring
+    fallback_metrics["total_requests"] += 1
+    is_fallback = result.get("fallback", False)
+    if is_fallback:
+        fallback_metrics["fallback_count"] += 1
+        reason = result.get("fallback_reason", "unknown")
+        fallback_reasons = fallback_metrics["fallback_reasons"]
+        fallback_reasons[reason] = fallback_reasons.get(reason, 0) + 1
 
     return {
         "interaction_id": interaction_id,
@@ -194,3 +208,18 @@ def retention_cleanup(background_tasks: BackgroundTasks):
     """Week 2: 1-year retention policy cleanup job for expired rows."""
     background_tasks.add_task(cleanup_expired_rows)
     return {"status": "success", "message": "Retention cleanup job started in background"}
+
+
+@app.get("/metrics/fallback")
+def get_fallback_metrics():
+    """Week 2: Dashboard-ready view of the fallback rate and reason breakdown."""
+    total = fallback_metrics["total_requests"]
+    fallbacks = fallback_metrics["fallback_count"]
+    fallback_rate = (fallbacks / total) if total > 0 else 0.0
+    
+    return {
+        "total_requests": total,
+        "fallback_count": fallbacks,
+        "fallback_rate": fallback_rate,
+        "fallback_reasons": fallback_metrics["fallback_reasons"]
+    }
