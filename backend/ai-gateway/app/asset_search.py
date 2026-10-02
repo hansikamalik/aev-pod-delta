@@ -1,15 +1,18 @@
+
 """
 Asset search tool for the AI Gateway.
 
-Provides a small, structured interface for searching assets
-that can later be connected to the platform's RAG asset-search service.
+Provides structured asset search results and citations.
+The local asset index is demo data and should later be
+replaced by the platform's tenant-scoped RAG search service.
 """
 
 from typing import Any, Dict, List
 
+from app.tools import register_tool
 
-# Temporary local asset index.
-# This keeps the tool deterministic for local development and tests.
+
+# Temporary local asset index for development and tests.
 ASSETS: List[Dict[str, Any]] = [
     {
         "id": "asset-001",
@@ -35,22 +38,15 @@ ASSETS: List[Dict[str, Any]] = [
 ]
 
 
-def asset_search(
-    query: str,
-    asset_type: str | None = None,
-) -> Dict[str, Any]:
-    """
-    Search for assets and return structured results.
+@register_tool("asset_search")
+def asset_search(query: str, user_id: str) -> Dict[str, Any]:
+    """Search assets by name, type, or description."""
 
-    Args:
-        query: Text to search for in asset name or description.
-        asset_type: Optional asset type filter.
-
-    Returns:
-        A structured dictionary containing matching assets.
-    """
     if not isinstance(query, str):
         raise TypeError("query must be a string")
+
+    if not isinstance(user_id, str) or not user_id.strip():
+        raise ValueError("user_id must be a non-empty string")
 
     query = query.strip().lower()
 
@@ -60,21 +56,28 @@ def asset_search(
     results = []
 
     for asset in ASSETS:
-        if asset_type and asset["type"].lower() != asset_type.lower():
-            continue
-
         searchable_text = (
-            f"{asset['name']} "
-            f"{asset['type']} "
-            f"{asset['description']}"
+            f"{asset['name']} {asset['type']} "
+            f"{asset['description']} {asset['id']}"
         ).lower()
 
         if query in searchable_text:
             results.append(asset.copy())
+
+    citations = [
+        {
+            "id": f"cit-asset-{asset['id']}",
+            "type": "asset",
+            "id_ref": asset["id"],
+            "url": f"/assets/{asset['id']}",
+        }
+        for asset in results
+    ]
 
     return {
         "tool": "asset_search",
         "query": query,
         "results": results,
         "count": len(results),
+        "citations": citations,
     }
