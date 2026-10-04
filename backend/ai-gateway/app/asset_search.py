@@ -1,15 +1,18 @@
+
 """
 Asset search tool for the AI Gateway.
 
-Provides a small, structured interface for searching assets
-that can later be connected to the platform's RAG asset-search service.
+Provides structured asset search results and citations.
+The local asset index is demo data and should later be
+replaced by the platform's tenant-scoped RAG search service.
 """
 
 from typing import Any, Dict, List
 
+from app.tools import register_tool
 
-# Temporary local asset index.
-# This keeps the tool deterministic for local development and tests.
+
+# Temporary local asset index for development and tests.
 ASSETS: List[Dict[str, Any]] = [
     {
         "id": "asset-001",
@@ -35,46 +38,70 @@ ASSETS: List[Dict[str, Any]] = [
 ]
 
 
-def asset_search(
-    query: str,
-    asset_type: str | None = None,
-) -> Dict[str, Any]:
+@register_tool("asset_search")
+def asset_search(query: str, user_id: str) -> Dict[str, Any]:
     """
-    Search for assets and return structured results.
+    Search assets by name, type, description, or asset ID.
 
     Args:
-        query: Text to search for in asset name or description.
-        asset_type: Optional asset type filter.
+        query: Search text.
+        user_id: ID of the user making the request.
 
     Returns:
-        A structured dictionary containing matching assets.
+        A dictionary containing matching assets, result count,
+        normalized query, and citations for matching assets.
+
+    Raises:
+        TypeError: If query or user_id is not a string.
+        ValueError: If query or user_id is empty.
     """
+
+    # Validate query.
     if not isinstance(query, str):
         raise TypeError("query must be a string")
 
     query = query.strip().lower()
-
     if not query:
         raise ValueError("query cannot be empty")
 
-    results = []
+    # Validate requesting user.
+    if not isinstance(user_id, str):
+        raise TypeError("user_id must be a string")
+
+    user_id = user_id.strip()
+    if not user_id:
+        raise ValueError("user_id must be a non-empty string")
+
+    # Search the local asset index.
+    results: List[Dict[str, Any]] = []
 
     for asset in ASSETS:
-        if asset_type and asset["type"].lower() != asset_type.lower():
-            continue
-
         searchable_text = (
             f"{asset['name']} "
             f"{asset['type']} "
-            f"{asset['description']}"
+            f"{asset['description']} "
+            f"{asset['id']}"
         ).lower()
 
         if query in searchable_text:
+            # Return a copy to prevent callers from modifying the index.
             results.append(asset.copy())
+
+    # Generate citations for matching assets.
+    citations = [
+        {
+            "id": f"cit-asset-{asset['id']}",
+            "type": "asset",
+            "id_ref": asset["id"],
+            "url": f"/assets/{asset['id']}",
+        }
+        for asset in results
+    ]
 
     return {
         "tool": "asset_search",
         "query": query,
         "results": results,
         "count": len(results),
+        "citations": citations,
     }
