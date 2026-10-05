@@ -23,7 +23,9 @@ class Checkpoint(BaseModel):
 
 class SyncResult(BaseModel):
     status: str
+    mode: str = "incremental"
     assets_discovered: int = 0
     assets_pushed: int = 0
+    assets_skipped: int = 0
     checkpoint: Optional[Checkpoint] = None
     errors: List[str] = Field(default_factory=list)
