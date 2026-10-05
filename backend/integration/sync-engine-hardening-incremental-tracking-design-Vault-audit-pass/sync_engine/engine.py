@@ -1,8 +1,14 @@
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta, timezone
 from typing import Any, List, Optional
 from sync_engine.models import Checkpoint, SyncResult
 from sync_engine.sanitizer import normalize_event_to_asset
 
+
+FetchFn = Callable[
+    [str, str],
+    Awaitable[List[dict[str, Any]]],
+]
 
 class HardenedSyncEngine:
     def __init__(
