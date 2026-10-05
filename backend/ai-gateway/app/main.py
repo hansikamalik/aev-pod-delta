@@ -17,7 +17,6 @@ from app.audit_log import (  # noqa: F401
     update_fact_check,
 )
 
-from app.citations import router as citations_router
 from app.client import ask_gpt
 from app.config import settings
 from app.cost_tracker import CostTracker
@@ -41,7 +40,6 @@ fallback_metrics = {
     "fallback_reasons": {},
 }
 
-app.include_router(citations_router)
 
 guardrails = Guardrails()
 ASSET_ID_PATTERN = re.compile(r"\basset-\d+\b", re.IGNORECASE)
