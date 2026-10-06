@@ -1,0 +1,30 @@
+{
+  "connectors": [
+    "Azure_Normalization_Platform_Push",
+    "cyberark_auth_module",
+    "cyberark-discovery-integration",
+    "elastic_connector",
+    "qradar_connector",
+    "splunk_connector",
+    "vault-enterprise-framework"
+  ],
+  "secret_blacklist_tokens": [
+    "client_secret",
+    "access_token",
+    "private_key",
+    "api_key",
+    "session_token",
+    "vault_token",
+    "password",
+    "credential"
+  ],
+  "connector_owners": {
+    "vault-enterprise-framework": "SecOps & Core Platform Team",
+    "cyberark_auth_module": "Identity & Auth Team",
+    "cyberark-discovery-integration": "Identity & Auth Team",
+    "Azure_Normalization_Platform_Push": "Core Sync Engine Team",
+    "elastic_connector": "SIEM Integration Team",
+    "splunk_connector": "SIEM Integration Team",
+    "qradar_connector": "SIEM Integration Team"
+  }
+}

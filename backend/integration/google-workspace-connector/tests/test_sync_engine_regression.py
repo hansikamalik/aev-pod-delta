@@ -8,6 +8,7 @@ from google_workspace_connector.connector import GoogleWorkspaceConnector
 from google_workspace_connector.state import InMemorySyncStateStore
 
 from sync_engine.engine import HardenedSyncEngine
+from sync_engine.models import Checkpoint
 
 
 class FakeAuth:
@@ -42,6 +43,10 @@ class FakeReports:
 
     def activities(self):
         return FakeActivities(self.events)
+        self._events = events
+
+    def activities(self):
+        return FakeActivities(self._events)
 
 
 class FakeClients:
@@ -109,6 +114,9 @@ def make_event(
 @pytest.fixture
 def google_connector(config):
     events = [make_event()]
+    events = [
+        make_event(),
+    ]
 
     def client_factory(credentials):
         return FakeClients(credentials, events)
@@ -131,6 +139,8 @@ async def test_google_workspace_initial_sync(
     google_connector,
     config,
 ):
+@pytest.mark.asyncio
+async def test_google_workspace_initial_sync(google_connector):
     platform = FakePlatformClient()
 
     engine = HardenedSyncEngine(
@@ -143,6 +153,33 @@ async def test_google_workspace_initial_sync(
 
     result = await engine.execute_incremental_sync(fetch)
     print("RESULT:", result)
+    async def fetch():
+        return [
+            event
+            async for event in google_connector.ingest(
+                {
+                    **{
+                        "customer_id": "my_customer",
+                        "domain": "example.com",
+                        "admin_user": "admin@example.com",
+                        "_credentials": {
+                            "service_account": {
+                                "client_email": "svc@example.com",
+                                "private_key_ref": "vault://google-workspace/service-account",
+                            }
+                        },
+                        "sync": {
+                            "users": False,
+                            "audit_logs": True,
+                            "audit_application": "login",
+                        },
+                    }
+                }
+            )
+        ]
+
+    result = await engine.execute_incremental_sync(fetch)
+
     assert result.status == "success"
     assert result.assets_discovered == 1
     assert result.assets_pushed == 1
@@ -164,6 +201,28 @@ async def test_google_workspace_second_sync_is_idempotent(
     )
 
     fetch = build_fetch(google_connector, config)
+    async def fetch():
+        return [
+            event
+            async for event in google_connector.ingest(
+                {
+                    "customer_id": "my_customer",
+                    "domain": "example.com",
+                    "admin_user": "admin@example.com",
+                    "_credentials": {
+                        "service_account": {
+                            "client_email": "svc@example.com",
+                            "private_key_ref": "vault://google-workspace/service-account",
+                        }
+                    },
+                    "sync": {
+                        "users": False,
+                        "audit_logs": True,
+                        "audit_application": "login",
+                    },
+                }
+            )
+        ]
 
     first = await engine.execute_incremental_sync(fetch)
 
@@ -183,6 +242,9 @@ async def test_google_workspace_new_event_is_pushed_incrementally(
     config,
 ):
     events = [make_event()]
+    events = [
+        make_event(),
+    ]
 
     def client_factory(credentials):
         return FakeClients(credentials, events)
@@ -206,6 +268,14 @@ async def test_google_workspace_new_event_is_pushed_incrementally(
     first = await engine.execute_incremental_sync(fetch)
 
     assert first.status == "success"
+    async def fetch():
+        return [
+            event
+            async for event in connector.ingest(config)
+        ]
+
+    first = await engine.execute_incremental_sync(fetch)
+
     assert first.assets_pushed == 1
 
     events.append(

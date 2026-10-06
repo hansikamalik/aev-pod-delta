@@ -1,125 +1,161 @@
-"""
-Tool-calling framework for the AI Gateway.
+"""Tool registration, schemas, validation, and role-based dispatch."""
 
-This module does two things:
-
-1. Defines the SCHEMA for every tool the Copilot is allowed to call.
-   The schema is what gets sent to Gemma so it knows which tools exist,
-   what each one does, and what arguments each one needs.
-
-2. Provides the DISPATCHER, which takes a tool name requested by the
-   model and routes it to the real Python function that implements it.
-
-Individual tool implementations (asset_search, exposure_query, etc.)
-are registered here by the squad members who build them. This module
-only owns the framework -- not the tool logic itself.
-"""
+from typing import Any, Callable, Dict, List
 
 from app.permissions import is_allowed
-from typing import Any, Callable, Dict, List
 
 
 class ToolError(Exception):
-    """Raised when a tool cannot be dispatched or fails validation."""
+    """Raised when a tool registration or execution contract is invalid."""
 
-
-# ---------------------------------------------------------------------
-# Tool schema
-# ---------------------------------------------------------------------
-# Each entry describes one tool in the format an LLM expects:
-#   name        -- what the model calls it by
-#   description -- tells the model WHEN to use this tool
-#   parameters  -- JSON Schema describing the arguments
-#
-# Keep descriptions specific. A vague description is the most common
-# reason a model picks the wrong tool.
 
 TOOL_SCHEMAS: List[Dict[str, Any]] = [
     {
         "name": "asset_search",
-        "description": (
-            "Search the platform's asset inventory using a natural-language "
-            "description. Use when the user is looking for assets but does "
-            "not know the exact name or ID."
-        ),
+        "description": "Search assets using a natural-language query.",
         "parameters": {
             "type": "object",
             "properties": {
                 "query": {
                     "type": "string",
-                    "description": "Natural-language description of the asset.",
+                    "description": "Natural-language asset search query.",
                 },
             },
             "required": ["query"],
+            "additionalProperties": False,
         },
     },
     {
         "name": "exposure_query",
-        "description": (
-            "Look up security exposures (vulnerabilities, misconfigurations) "
-            "for the organisation, optionally filtered by asset or severity."
-        ),
+        "description": "Query asset exposure and vulnerability information.",
         "parameters": {
             "type": "object",
             "properties": {
-                "asset_id": {
-                    "type": "string",
-                    "description": "Optional asset ID to filter exposures by.",
-                },
+                "asset_id": {"type": "string"},
                 "severity": {
                     "type": "string",
-                    "description": "Optional severity filter.",
                     "enum": ["low", "medium", "high", "critical"],
                 },
             },
             "required": [],
+            "additionalProperties": False,
         },
     },
     {
         "name": "risk_score_get",
-        "description": (
-            "Get the current calculated risk score for a specific asset. "
-            "Use when the user asks how risky a named asset is."
-        ),
+        "description": "Retrieve the risk score for an asset.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "asset_id": {"type": "string"},
+            },
+            "required": ["asset_id"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "report_generate",
+        "description": "Generate a security report for an asset.",
         "parameters": {
             "type": "object",
             "properties": {
                 "asset_id": {
                     "type": "string",
-                    "description": "The asset ID to get the risk score for.",
+                    "description": "Asset identifier.",
+                },
+                "report_type": {
+                    "type": "string",
+                    "enum": ["security", "risk", "exposure"],
+                    "description": "Type of report to generate.",
                 },
             },
             "required": ["asset_id"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "workflow_assist",
+        "description": "List, describe, dry-run, or start a supported workflow.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": ["list", "describe", "run"],
+                },
+                "workflow_id": {"type": "string"},
+                "params": {"type": "object"},
+                "dry_run": {"type": "boolean"},
+            },
+            "required": ["action"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "policy_check",
+        "description": "Check a resource configuration against policy rules.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "resource_type": {"type": "string"},
+                "config": {"type": "object"},
+                "policy_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                },
+            },
+            "required": ["resource_type", "config"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "audit_query",
+        "description": "Query audit events with optional filters.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "resource": {"type": "string"},
+                "actor": {"type": "string"},
+                "action": {"type": "string"},
+                "since_days": {"type": "integer"},
+                "limit": {"type": "integer"},
+            },
+            "required": [],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "integration_list",
+        "description": (
+            "List integrations, optionally filtered by connection status."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "enum": ["connected", "error", "disconnected"],
+                },
+            },
+            "required": [],
+            "additionalProperties": False,
         },
     },
 ]
 
 
-# ---------------------------------------------------------------------
-# Tool registry
-# ---------------------------------------------------------------------
-# Maps a tool name to the Python function that implements it.
-# Squad members register their tool here via @register_tool.
-
 _TOOL_REGISTRY: Dict[str, Callable[..., Any]] = {}
 
 
-def register_tool(name: str) -> Callable:
-    """
-    Decorator that registers a function as the implementation of a tool.
-
-    Usage:
-        @register_tool("risk_score_get")
-        def risk_score_get(asset_id: str, user_id: str) -> dict:
-            ...
-
-    Every tool function MUST accept a `user_id` keyword argument so the
-    dispatcher can enforce per-user permissions on the call.
-    """
+def register_tool(
+    name: str,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Register a tool implementation under a unique name."""
 
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         if name in _TOOL_REGISTRY:
-            raise ToolError(f"Tool '{name}' is already registered.")
+            raise ToolError(f"Tool already registered: {name}")
+
         _TOOL_REGISTRY[name] = func
         return func
 
@@ -127,70 +163,58 @@ def register_tool(name: str) -> Callable:
 
 
 def get_registered_tools() -> List[str]:
-    """Return the names of every tool that has an implementation."""
-
-    return sorted(_TOOL_REGISTRY.keys())
+    """Return registered tool names."""
+    return list(_TOOL_REGISTRY.keys())
 
 
 def get_tool_schemas() -> List[Dict[str, Any]]:
-    """
-    Return the schemas for tools that actually have an implementation.
-
-    A tool with a schema but no registered function is not advertised to
-    the model -- otherwise the model could request something that cannot
-    be dispatched.
-    """
+    """Return schemas only for tools that are currently registered."""
+    registered = set(_TOOL_REGISTRY.keys())
 
     return [
         schema
         for schema in TOOL_SCHEMAS
-        if schema["name"] in _TOOL_REGISTRY
+        if schema["name"] in registered
     ]
 
 
-# ---------------------------------------------------------------------
-# Validation
-# ---------------------------------------------------------------------
+def validate_arguments(
+    tool_name: str,
+    arguments: Dict[str, Any],
+) -> None:
+    """Validate required and unexpected arguments against the tool schema."""
+    if not isinstance(arguments, dict):
+        raise ValueError("Tool arguments must be an object")
 
-def _get_schema(tool_name: str) -> Dict[str, Any]:
-    for schema in TOOL_SCHEMAS:
-        if schema["name"] == tool_name:
-            return schema
-    raise ToolError(f"Unknown tool: '{tool_name}'")
+    schema = next(
+        (item for item in TOOL_SCHEMAS if item["name"] == tool_name),
+        None,
+    )
 
+    if schema is None:
+        raise ValueError(f"No schema defined for tool: {tool_name}")
 
-def validate_arguments(tool_name: str, arguments: Dict[str, Any]) -> None:
-    """
-    Check the model's requested arguments against the tool's schema.
-
-    Raises ToolError when a required argument is missing or an unexpected
-    argument is supplied. This matters because the arguments come from an
-    LLM, not from trusted code -- they cannot be assumed well-formed.
-    """
-
-    schema = _get_schema(tool_name)
-    params = schema.get("parameters", {})
-    properties = params.get("properties", {})
-    required = params.get("required", [])
+    parameters = schema.get("parameters", {})
+    properties = parameters.get("properties", {})
+    required = parameters.get("required", [])
 
     missing = [key for key in required if key not in arguments]
+
     if missing:
-        raise ToolError(
-            f"Tool '{tool_name}' missing required argument(s): "
-            f"{', '.join(missing)}"
+        raise ValueError(
+            f"Missing required arguments for {tool_name}: {', '.join(missing)}"
         )
 
-    unexpected = [key for key in arguments if key not in properties]
+    unexpected = [
+        key for key in arguments
+        if key not in properties
+    ]
+
     if unexpected:
-        raise ToolError(
-            f"Tool '{tool_name}' received unexpected argument(s): "
-            f"{', '.join(unexpected)}"
+        raise ValueError(
+            f"Unexpected arguments for {tool_name}: {', '.join(unexpected)}"
         )
 
-
-# ---------------------------------------------------------------------
-# Dispatcher
-# ---------------------------------------------------------------------
 
 def dispatch_tool(
     tool_name: str,
@@ -198,76 +222,60 @@ def dispatch_tool(
     user_id: str,
     role: str,
 ) -> Dict[str, Any]:
-    """
-    Route a model-requested tool call to its implementation and run it.
-
-    Returns a normalised envelope so the caller always gets the same
-    shape back, whether the tool succeeded or failed:
-
-        {"tool": str, "ok": bool, "result": Any, "error": str | None}
-
-    A failing tool must not crash the whole request -- the model needs a
-    chance to explain the failure to the user instead.
-
-    RBAC is enforced here, centrally, rather than inside each tool --
-    that way no tool implementation can forget the permission check.
-    The check runs BEFORE argument validation on purpose: a caller who
-    lacks permission for a tool should not learn anything about that
-    tool's expected arguments either.
-    """
+    """Authorize, validate, and execute a registered tool."""
 
     if tool_name not in _TOOL_REGISTRY:
         return {
             "tool": tool_name,
             "ok": False,
             "result": None,
-            "error": f"Unknown or unregistered tool: '{tool_name}'",
+            "error": f"Unknown tool: {tool_name}",
+            "citations": [],
         }
 
+    # Authorize before validation to avoid exposing argument requirements.
     if not is_allowed(role, tool_name):
         return {
             "tool": tool_name,
             "ok": False,
             "result": None,
-            "error": f"Role '{role}' is not permitted to use '{tool_name}'.",
+            "error": (
+                f"Role '{role}' is not permitted to use tool '{tool_name}'"
+            ),
+            "citations": [],
         }
 
     try:
         validate_arguments(tool_name, arguments)
-    except ToolError as exc:
+
+        result = _TOOL_REGISTRY[tool_name](
+            user_id=user_id,
+            **arguments,
+        )
+
+        citations = []
+
+        if isinstance(result, dict):
+            citations = result.get("citations", [])
+
+        return {
+            "tool": tool_name,
+            "ok": True,
+            "result": result,
+            "error": None,
+            "citations": citations,
+        }
+
+    except Exception as exc:
         return {
             "tool": tool_name,
             "ok": False,
             "result": None,
             "error": str(exc),
+            "citations": [],
         }
 
-    func = _TOOL_REGISTRY[tool_name]
 
-    try:
-        # user_id is always passed so the tool can scope its query to
-        # what this specific caller is allowed to see (defense in depth
-        # on top of the role check above).
-        result = func(user_id=user_id, **arguments)
-    except Exception as exc:  # noqa: BLE001 - tools are third-party code
-        return {
-            "tool": tool_name,
-            "ok": False,
-            "result": None,
-            "error": f"Tool '{tool_name}' failed: {exc}",
-        }
-
-    return {
-        "tool": tool_name,
-        "ok": True,
-        "result": (
-            result.get("result", result)
-            if isinstance(result, dict) and "result" in result
-            else result
-        ),
-        "error": None,
-        "citations": (
-            result.get("citations") if isinstance(result, dict) and "citations" in result
-            else ([result["citation"]] if isinstance(result, dict) and "citation" in result else [])
-        ),
-    }
+# Import after defining the registry and dispatcher. This registers Copilot
+# implementations when app.tools is imported directly by tests or other modules.
+from app import copilot_tools  # noqa: E402, F401

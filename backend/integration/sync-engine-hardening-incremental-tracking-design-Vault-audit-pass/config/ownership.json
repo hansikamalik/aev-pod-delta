@@ -1,0 +1,41 @@
+{
+  "pod_name": "AEV Pod Delta",
+  "repository": "https://github.com/hansikamalik/aev-pod-delta/tree/develop/backend/integration",
+  "ownership_mapping": {
+    "Azure_Normalization_Platform_Push": {
+      "owner_team": "Cloud Security Pod",
+      "lead": "azure-dev-lead@company.internal",
+      "regression_suite": "regression_tests/test_full_regression.py::test_full_connector_regression"
+    },
+    "cyberark_auth_module": {
+      "owner_team": "Identity & Access Management",
+      "lead": "iam-dev-lead@company.internal",
+      "regression_suite": "regression_tests/test_full_regression.py::test_full_connector_regression"
+    },
+    "cyberark-discovery-integration": {
+      "owner_team": "Identity & Access Management",
+      "lead": "iam-dev-lead@company.internal",
+      "regression_suite": "regression_tests/test_full_regression.py::test_full_connector_regression"
+    },
+    "elastic_connector": {
+      "owner_team": "SIEM Engineering",
+      "lead": "siem-dev-lead@company.internal",
+      "regression_suite": "regression_tests/test_full_regression.py::test_full_connector_regression"
+    },
+    "qradar_connector": {
+      "owner_team": "SIEM Engineering",
+      "lead": "siem-dev-lead@company.internal",
+      "regression_suite": "regression_tests/test_full_regression.py::test_full_connector_regression"
+    },
+    "splunk_connector": {
+      "owner_team": "SIEM Engineering",
+      "lead": "siem-dev-lead@company.internal",
+      "regression_suite": "regression_tests/test_full_regression.py::test_full_connector_regression"
+    },
+    "vault-enterprise-framework": {
+      "owner_team": "Security & Vault Operations",
+      "lead": "vault-admin@company.internal",
+      "regression_suite": "regression_tests/test_full_regression.py::test_full_connector_regression"
+    }
+  }
+}

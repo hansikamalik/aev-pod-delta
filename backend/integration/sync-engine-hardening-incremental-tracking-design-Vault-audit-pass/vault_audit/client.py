@@ -3,7 +3,7 @@ import requests
 
 
 class VaultAuthError(Exception):
-    """Raised when authentication or fetching secrets from HashiCorp Vault fails."""
+    """Raised when fetching secrets from HashiCorp Vault fails."""
     pass
 
 
@@ -18,9 +18,7 @@ class VaultClient:
             self.session.headers.update({"X-Vault-Namespace": self.namespace})
 
     def get_connector_credentials(self, connector_id: str) -> Dict[str, Any]:
-        """
-        Enforces isolation path: /v1/secret/data/connectors/{connector_id}/config
-        """
+        """Enforces schema isolation path: /v1/secret/data/connectors/{connector_id}/config"""
         path = f"{self.vault_url}/v1/secret/data/connectors/{connector_id}/config"
         try:
             response = self.session.get(path, timeout=10)
