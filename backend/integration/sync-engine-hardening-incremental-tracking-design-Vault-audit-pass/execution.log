@@ -1,0 +1,174 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0 -- /usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/kali/Documents/sync-engine-hardening-incremental-tracking-design-Vault-audit-pass
+configfile: pytest.ini
+plugins: asyncio-1.4.0, cov-7.1.0, anyio-4.12.1, typeguard-4.4.4, Faker-39.0.0, requests_mock-1.12.1
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 32 items
+
+regression_tests/test_connectors_regression.py::test_all_connectors_lifecycle[AzureNormalizationPlatformPush] PASSED [  3%]
+regression_tests/test_connectors_regression.py::test_all_connectors_lifecycle[CyberArkAuthModule] PASSED [  6%]
+regression_tests/test_connectors_regression.py::test_all_connectors_lifecycle[CyberArkDiscoveryIntegration] PASSED [  9%]
+regression_tests/test_connectors_regression.py::test_all_connectors_lifecycle[ElasticConnector] PASSED [ 12%]
+regression_tests/test_connectors_regression.py::test_all_connectors_lifecycle[QRadarConnector] PASSED [ 15%]
+regression_tests/test_connectors_regression.py::test_all_connectors_lifecycle[SplunkConnector] PASSED [ 18%]
+regression_tests/test_connectors_regression.py::test_all_connectors_lifecycle[VaultEnterpriseFramework] PASSED [ 21%]
+regression_tests/test_full_regression.py::test_azure_normalization_platform_push_failure_recovery PASSED [ 25%]
+regression_tests/test_full_regression.py::test_full_system_regression_sweep PASSED [ 28%]
+regression_tests/test_monitoring_health.py::test_vault_and_splunk_health_and_redaction PASSED [ 31%]
+regression_tests/test_vault_audit_pass.py::test_vault_audit_pass_across_connectors[AzureNormalizationPlatformPush] PASSED [ 34%]
+regression_tests/test_vault_audit_pass.py::test_vault_audit_pass_across_connectors[CyberArkAuthModule] PASSED [ 37%]
+regression_tests/test_vault_audit_pass.py::test_vault_audit_pass_across_connectors[CyberArkDiscoveryIntegration] PASSED [ 40%]
+regression_tests/test_vault_audit_pass.py::test_vault_audit_pass_across_connectors[ElasticConnector] PASSED [ 43%]
+regression_tests/test_vault_audit_pass.py::test_vault_audit_pass_across_connectors[QRadarConnector] PASSED [ 46%]
+regression_tests/test_vault_audit_pass.py::test_vault_audit_pass_across_connectors[SplunkConnector] PASSED [ 50%]
+regression_tests/test_vault_audit_pass.py::test_vault_audit_pass_across_connectors[VaultEnterpriseFramework] PASSED [ 53%]
+regression_tests/test_vault_audit_pass.py::test_vault_audit_violation_trigger PASSED [ 56%]
+dr_tests/test_dr_integration_service.py::test_integration_service_down_and_clean_resume[Azure_Normalization_Platform_Push] PASSED [ 59%]
+dr_tests/test_dr_integration_service.py::test_integration_service_down_and_clean_resume[cyberark_auth_module] PASSED [ 62%]
+dr_tests/test_dr_integration_service.py::test_integration_service_down_and_clean_resume[cyberark-discovery-integration] PASSED [ 65%]
+dr_tests/test_dr_integration_service.py::test_integration_service_down_and_clean_resume[elastic_connector] PASSED [ 68%]
+dr_tests/test_dr_integration_service.py::test_integration_service_down_and_clean_resume[qradar_connector] PASSED [ 71%]
+dr_tests/test_dr_integration_service.py::test_integration_service_down_and_clean_resume[splunk_connector] PASSED [ 75%]
+dr_tests/test_dr_integration_service.py::test_integration_service_down_and_clean_resume[vault-enterprise-framework] PASSED [ 78%]
+vault_audit_rotation/test_vault_rotation_and_audit.py::test_inflight_credential_rotation_and_audit_pass[Azure_Normalization_Platform_Push] PASSED [ 81%]
+vault_audit_rotation/test_vault_rotation_and_audit.py::test_inflight_credential_rotation_and_audit_pass[cyberark_auth_module] PASSED [ 84%]
+vault_audit_rotation/test_vault_rotation_and_audit.py::test_inflight_credential_rotation_and_audit_pass[cyberark-discovery-integration] PASSED [ 87%]
+vault_audit_rotation/test_vault_rotation_and_audit.py::test_inflight_credential_rotation_and_audit_pass[elastic_connector] PASSED [ 90%]
+vault_audit_rotation/test_vault_rotation_and_audit.py::test_inflight_credential_rotation_and_audit_pass[qradar_connector] PASSED [ 93%]
+vault_audit_rotation/test_vault_rotation_and_audit.py::test_inflight_credential_rotation_and_audit_pass[splunk_connector] PASSED [ 96%]
+vault_audit_rotation/test_vault_rotation_and_audit.py::test_inflight_credential_rotation_and_audit_pass[vault-enterprise-framework] PASSED [100%]
+
+============================== 32 passed in 4.08s ==============================
+======================================================================
+  DISASTER RECOVERY SIMULATION: INTEGRATION SERVICE DOWN & RECOVERY  
+======================================================================
+
+[1/7] Testing Connector: Azure_Normalization_Platform_Push
+  ├─ State Checkpointed: Job DR_SYNC_001 at Offset 1250
+  ├─ [SIMULATED OUTAGE] Integration Service killed (SIGKILL)
+  ├─ [SERVICE RESTORED] Integration Service online
+  └─ STATUS: [DR PASSED] Sync resumed cleanly at offset 1250 [Vault Audit: PASSED]
+
+[2/7] Testing Connector: cyberark_auth_module
+  ├─ State Checkpointed: Job DR_SYNC_002 at Offset 2500
+  ├─ [SIMULATED OUTAGE] Integration Service killed (SIGKILL)
+  ├─ [SERVICE RESTORED] Integration Service online
+  └─ STATUS: [DR PASSED] Sync resumed cleanly at offset 2500 [Vault Audit: PASSED]
+
+[3/7] Testing Connector: cyberark-discovery-integration
+  ├─ State Checkpointed: Job DR_SYNC_003 at Offset 3750
+  ├─ [SIMULATED OUTAGE] Integration Service killed (SIGKILL)
+  ├─ [SERVICE RESTORED] Integration Service online
+  └─ STATUS: [DR PASSED] Sync resumed cleanly at offset 3750 [Vault Audit: PASSED]
+
+[4/7] Testing Connector: elastic_connector
+  ├─ State Checkpointed: Job DR_SYNC_004 at Offset 5000
+  ├─ [SIMULATED OUTAGE] Integration Service killed (SIGKILL)
+  ├─ [SERVICE RESTORED] Integration Service online
+  └─ STATUS: [DR PASSED] Sync resumed cleanly at offset 5000 [Vault Audit: PASSED]
+
+[5/7] Testing Connector: qradar_connector
+  ├─ State Checkpointed: Job DR_SYNC_005 at Offset 6250
+  ├─ [SIMULATED OUTAGE] Integration Service killed (SIGKILL)
+  ├─ [SERVICE RESTORED] Integration Service online
+  └─ STATUS: [DR PASSED] Sync resumed cleanly at offset 6250 [Vault Audit: PASSED]
+
+[6/7] Testing Connector: splunk_connector
+  ├─ State Checkpointed: Job DR_SYNC_006 at Offset 7500
+  ├─ [SIMULATED OUTAGE] Integration Service killed (SIGKILL)
+  ├─ [SERVICE RESTORED] Integration Service online
+  └─ STATUS: [DR PASSED] Sync resumed cleanly at offset 7500 [Vault Audit: PASSED]
+
+[7/7] Testing Connector: vault-enterprise-framework
+  ├─ State Checkpointed: Job DR_SYNC_007 at Offset 8750
+  ├─ [SIMULATED OUTAGE] Integration Service killed (SIGKILL)
+  ├─ [SERVICE RESTORED] Integration Service online
+  └─ STATUS: [DR PASSED] Sync resumed cleanly at offset 8750 [Vault Audit: PASSED]
+
+======================================================================
+DR SIMULATION COMPLETE: 7/7 Connectors Verified
+======================================================================
+======================================================================
+   VAULT AUDIT & CREDENTIAL ROTATION SUITE FOR CONNECTORS   
+======================================================================
+
+[1/7] Processing Connector: Azure_Normalization_Platform_Push
+  ├─ Vault Secret Rotated -> New Version: v2
+  └─ STATUS: [VAULT AUDIT PASSED] Credentials rotated & sanitized properly.
+
+[2/7] Processing Connector: cyberark_auth_module
+  ├─ Vault Secret Rotated -> New Version: v2
+  └─ STATUS: [VAULT AUDIT PASSED] Credentials rotated & sanitized properly.
+
+[3/7] Processing Connector: cyberark-discovery-integration
+  ├─ Vault Secret Rotated -> New Version: v2
+  └─ STATUS: [VAULT AUDIT PASSED] Credentials rotated & sanitized properly.
+
+[4/7] Processing Connector: elastic_connector
+  ├─ Vault Secret Rotated -> New Version: v2
+  └─ STATUS: [VAULT AUDIT PASSED] Credentials rotated & sanitized properly.
+
+[5/7] Processing Connector: qradar_connector
+  ├─ Vault Secret Rotated -> New Version: v2
+  └─ STATUS: [VAULT AUDIT PASSED] Credentials rotated & sanitized properly.
+
+[6/7] Processing Connector: splunk_connector
+  ├─ Vault Secret Rotated -> New Version: v2
+  └─ STATUS: [VAULT AUDIT PASSED] Credentials rotated & sanitized properly.
+
+[7/7] Processing Connector: vault-enterprise-framework
+  ├─ Vault Secret Rotated -> New Version: v2
+  └─ STATUS: [VAULT AUDIT PASSED] Credentials rotated & sanitized properly.
+
+======================================================================
+ROTATION & AUDIT SWEEP COMPLETE: 7/7 Connectors Passed
+======================================================================
+Traceback (most recent call last):
+  File "/home/kali/Documents/sync-engine-hardening-incremental-tracking-design-Vault-audit-pass/vault_audit.py", line 3, in <module>
+    from sync_engine.engine import SENSITIVE_KEYS
+ImportError: cannot import name 'SENSITIVE_KEYS' from 'sync_engine.engine' (/home/kali/Documents/sync-engine-hardening-incremental-tracking-design-Vault-audit-pass/sync_engine/engine.py)
+=== Running Vault-Audit Pass Execution for: ['Azure_Normalization_Platform_Push', 'cyberark_auth_module', 'cyberark-discovery-integration', 'elastic_connector', 'qradar_connector', 'splunk_connector', 'vault-enterprise-framework'] ===
+
+---> Connector: Azure_Normalization_Platform_Push [VAULT-AUDIT PASSED]
+  [Health Check] Latency: 0.00ms | Vault Audit: True
+  [Discover] Resources Discovered: 1 (Sanitized)
+  [Ingest] Events Ingested: 1 (Sanitized)
+  [Sync] Status: success | Assets Pushed: 1 | Vault Audit: True
+
+---> Connector: cyberark_auth_module [VAULT-AUDIT PASSED]
+  [Health Check] Latency: 0.00ms | Vault Audit: True
+  [Discover] Resources Discovered: 1 (Sanitized)
+  [Ingest] Events Ingested: 1 (Sanitized)
+  [Sync] Status: success | Assets Pushed: 1 | Vault Audit: True
+
+---> Connector: cyberark-discovery-integration [VAULT-AUDIT PASSED]
+  [Health Check] Latency: 0.00ms | Vault Audit: True
+  [Discover] Resources Discovered: 1 (Sanitized)
+  [Ingest] Events Ingested: 1 (Sanitized)
+  [Sync] Status: success | Assets Pushed: 1 | Vault Audit: True
+
+---> Connector: elastic_connector [VAULT-AUDIT PASSED]
+  [Health Check] Latency: 0.00ms | Vault Audit: True
+  [Discover] Resources Discovered: 1 (Sanitized)
+  [Ingest] Events Ingested: 1 (Sanitized)
+  [Sync] Status: success | Assets Pushed: 1 | Vault Audit: True
+
+---> Connector: qradar_connector [VAULT-AUDIT PASSED]
+  [Health Check] Latency: 0.00ms | Vault Audit: True
+  [Discover] Resources Discovered: 1 (Sanitized)
+  [Ingest] Events Ingested: 1 (Sanitized)
+  [Sync] Status: success | Assets Pushed: 1 | Vault Audit: True
+
+---> Connector: splunk_connector [VAULT-AUDIT PASSED]
+  [Health Check] Latency: 0.00ms | Vault Audit: True
+  [Discover] Resources Discovered: 1 (Sanitized)
+  [Ingest] Events Ingested: 1 (Sanitized)
+  [Sync] Status: success | Assets Pushed: 1 | Vault Audit: True
+
+---> Connector: vault-enterprise-framework [VAULT-AUDIT PASSED]
+  [Health Check] Latency: 0.00ms | Vault Audit: True
+  [Discover] Resources Discovered: 1 (Sanitized)
+  [Ingest] Events Ingested: 1 (Sanitized)
+  [Sync] Status: success | Assets Pushed: 1 | Vault Audit: True
