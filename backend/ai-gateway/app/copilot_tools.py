@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from app.tools import register_tool
+from app import report_generate   # noqa: F401
 
 
 _WORKFLOWS: Dict[str, Dict[str, Any]] = {

@@ -1,4 +1,3 @@
-
 """Tool registration, schemas, validation, and role-based dispatch."""
 
 from typing import Any, Callable, Dict, List
@@ -13,20 +12,17 @@ class ToolError(Exception):
 TOOL_SCHEMAS: List[Dict[str, Any]] = [
     {
         "name": "asset_search",
-        "description": "Search assets using available filters.",
+        "description": "Search assets using a natural-language query.",
         "parameters": {
             "type": "object",
             "properties": {
-                "query": {"type": "string"},
-                "asset_id": {"type": "string"},
-                "asset_type": {"type": "string"},
-                "name": {"type": "string"},
-                "owner": {"type": "string"},
-                "environment": {"type": "string"},
-                "status": {"type": "string"},
-                "limit": {"type": "integer"},
+                "query": {
+                    "type": "string",
+                    "description": "Natural-language asset search query.",
+                },
             },
-            "required": [],
+            "required": ["query"],
+            "additionalProperties": False,
         },
     },
     {
@@ -36,12 +32,13 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
             "type": "object",
             "properties": {
                 "asset_id": {"type": "string"},
-                "severity": {"type": "string"},
-                "status": {"type": "string"},
-                "query": {"type": "string"},
-                "limit": {"type": "integer"},
+                "severity": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high", "critical"],
+                },
             },
             "required": [],
+            "additionalProperties": False,
         },
     },
     {
@@ -53,6 +50,27 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
                 "asset_id": {"type": "string"},
             },
             "required": ["asset_id"],
+            "additionalProperties": False,
+        },
+    },
+    {
+        "name": "report_generate",
+        "description": "Generate a security report for an asset.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "asset_id": {
+                    "type": "string",
+                    "description": "Asset identifier.",
+                },
+                "report_type": {
+                    "type": "string",
+                    "enum": ["security", "risk", "exposure"],
+                    "description": "Type of report to generate.",
+                },
+            },
+            "required": ["asset_id"],
+            "additionalProperties": False,
         },
     },
     {
@@ -70,6 +88,7 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
                 "dry_run": {"type": "boolean"},
             },
             "required": ["action"],
+            "additionalProperties": False,
         },
     },
     {
@@ -86,6 +105,7 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
                 },
             },
             "required": ["resource_type", "config"],
+            "additionalProperties": False,
         },
     },
     {
@@ -101,11 +121,14 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
                 "limit": {"type": "integer"},
             },
             "required": [],
+            "additionalProperties": False,
         },
     },
     {
         "name": "integration_list",
-        "description": "List integrations, optionally filtered by connection status.",
+        "description": (
+            "List integrations, optionally filtered by connection status."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
@@ -115,6 +138,7 @@ TOOL_SCHEMAS: List[Dict[str, Any]] = [
                 },
             },
             "required": [],
+            "additionalProperties": False,
         },
     },
 ]
@@ -146,6 +170,7 @@ def get_registered_tools() -> List[str]:
 def get_tool_schemas() -> List[Dict[str, Any]]:
     """Return schemas only for tools that are currently registered."""
     registered = set(_TOOL_REGISTRY.keys())
+
     return [
         schema
         for schema in TOOL_SCHEMAS
@@ -165,6 +190,7 @@ def validate_arguments(
         (item for item in TOOL_SCHEMAS if item["name"] == tool_name),
         None,
     )
+
     if schema is None:
         raise ValueError(f"No schema defined for tool: {tool_name}")
 
@@ -173,12 +199,17 @@ def validate_arguments(
     required = parameters.get("required", [])
 
     missing = [key for key in required if key not in arguments]
+
     if missing:
         raise ValueError(
             f"Missing required arguments for {tool_name}: {', '.join(missing)}"
         )
 
-    unexpected = [key for key in arguments if key not in properties]
+    unexpected = [
+        key for key in arguments
+        if key not in properties
+    ]
+
     if unexpected:
         raise ValueError(
             f"Unexpected arguments for {tool_name}: {', '.join(unexpected)}"
@@ -192,6 +223,7 @@ def dispatch_tool(
     role: str,
 ) -> Dict[str, Any]:
     """Authorize, validate, and execute a registered tool."""
+
     if tool_name not in _TOOL_REGISTRY:
         return {
             "tool": tool_name,
@@ -215,12 +247,14 @@ def dispatch_tool(
 
     try:
         validate_arguments(tool_name, arguments)
+
         result = _TOOL_REGISTRY[tool_name](
             user_id=user_id,
             **arguments,
         )
 
         citations = []
+
         if isinstance(result, dict):
             citations = result.get("citations", [])
 
@@ -231,6 +265,7 @@ def dispatch_tool(
             "error": None,
             "citations": citations,
         }
+
     except Exception as exc:
         return {
             "tool": tool_name,
