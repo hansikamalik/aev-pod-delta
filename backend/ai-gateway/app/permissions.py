@@ -1,42 +1,33 @@
+"""Role-based permissions for AI Gateway tools."""
 
-"""Role-based permissions for Copilot tools."""
-
-from typing import Dict, Set
-
-
-ROLE_PERMISSIONS: Dict[str, Set[str]] = {
+ROLE_PERMISSIONS = {
     "admin": {"*"},
-
     "analyst": {
         "asset_search",
         "exposure_query",
         "risk_score_get",
+        "report_generate",
         "policy_check",
         "integration_list",
     },
-
     "viewer": {
         "asset_search",
         "integration_list",
     },
-
     "auditor": {
         "audit_query",
     },
 }
 
-
-# Anonymous users cannot execute tools, regardless of requested tool.
-BLOCKED_ROLES: Set[str] = {"anonymous"}
+BLOCKED_ROLES = {"anonymous"}
 
 
 def is_allowed(role: str, tool_name: str) -> bool:
-    """Return whether a role is permitted to execute a tool."""
+    """Return whether a role is allowed to use a tool."""
+
     if role in BLOCKED_ROLES:
         return False
 
-    allowed = ROLE_PERMISSIONS.get(role)
-    if allowed is None:
-        return False
+    permissions = ROLE_PERMISSIONS.get(role, set())
 
-    return "*" in allowed or tool_name in allowed
+    return "*" in permissions or tool_name in permissions
