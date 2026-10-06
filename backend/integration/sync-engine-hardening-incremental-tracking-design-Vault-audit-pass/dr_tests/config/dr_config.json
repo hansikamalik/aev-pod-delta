@@ -1,1 +1,17 @@
-
+{
+  "integration_service": {
+    "host": "127.0.0.1",
+    "port": 8443,
+    "checkpoint_dir": "/tmp/sync_engine_checkpoints",
+    "max_recovery_time_seconds": 15
+  },
+  "connectors": [
+    "Azure_Normalization_Platform_Push",
+    "cyberark_auth_module",
+    "cyberark-discovery-integration",
+    "elastic_connector",
+    "qradar_connector",
+    "splunk_connector",
+    "vault-enterprise-framework"
+  ]
+}
