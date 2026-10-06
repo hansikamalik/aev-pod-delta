@@ -39,6 +39,10 @@ class FakeActivities:
 
 class FakeReports:
     def __init__(self, events):
+        self.events = events
+
+    def activities(self):
+        return FakeActivities(self.events)
         self._events = events
 
     def activities(self):
@@ -47,6 +51,7 @@ class FakeReports:
 
 class FakeClients:
     def __init__(self, credentials, events):
+        self.directory = MagicMock()
         self.reports = FakeReports(events)
 
 
@@ -108,6 +113,7 @@ def make_event(
 
 @pytest.fixture
 def google_connector(config):
+    events = [make_event()]
     events = [
         make_event(),
     ]
@@ -122,6 +128,17 @@ def google_connector(config):
     )
 
 
+def build_fetch(connector, config):
+    async def fetch(**kwargs):
+        return [event async for event in connector.ingest(config)]
+    return fetch
+
+
+@pytest.mark.asyncio
+async def test_google_workspace_initial_sync(
+    google_connector,
+    config,
+):
 @pytest.mark.asyncio
 async def test_google_workspace_initial_sync(google_connector):
     platform = FakePlatformClient()
@@ -132,6 +149,10 @@ async def test_google_workspace_initial_sync(google_connector):
         retry_base_delay_seconds=0,
     )
 
+    fetch = build_fetch(google_connector, config)
+
+    result = await engine.execute_incremental_sync(fetch)
+    print("RESULT:", result)
     async def fetch():
         return [
             event
@@ -169,6 +190,7 @@ async def test_google_workspace_initial_sync(google_connector):
 @pytest.mark.asyncio
 async def test_google_workspace_second_sync_is_idempotent(
     google_connector,
+    config,
 ):
     platform = FakePlatformClient()
 
@@ -178,6 +200,7 @@ async def test_google_workspace_second_sync_is_idempotent(
         retry_base_delay_seconds=0,
     )
 
+    fetch = build_fetch(google_connector, config)
     async def fetch():
         return [
             event
@@ -218,6 +241,7 @@ async def test_google_workspace_second_sync_is_idempotent(
 async def test_google_workspace_new_event_is_pushed_incrementally(
     config,
 ):
+    events = [make_event()]
     events = [
         make_event(),
     ]
@@ -239,6 +263,11 @@ async def test_google_workspace_new_event_is_pushed_incrementally(
         retry_base_delay_seconds=0,
     )
 
+    fetch = build_fetch(connector, config)
+
+    first = await engine.execute_incremental_sync(fetch)
+
+    assert first.status == "success"
     async def fetch():
         return [
             event
@@ -253,7 +282,6 @@ async def test_google_workspace_new_event_is_pushed_incrementally(
         make_event(
             event_time="2026-01-01T01:00:00Z",
             email="bob@example.com",
-            event_name="login_success",
         )
     )
 
@@ -292,11 +320,7 @@ async def test_google_workspace_duplicate_events_are_deduplicated(
         retry_base_delay_seconds=0,
     )
 
-    async def fetch():
-        return [
-            event
-            async for event in connector.ingest(config)
-        ]
+    fetch = build_fetch(connector, config)
 
     result = await engine.execute_incremental_sync(fetch)
 
@@ -327,11 +351,7 @@ async def test_google_workspace_empty_sync(config):
         retry_base_delay_seconds=0,
     )
 
-    async def fetch():
-        return [
-            event
-            async for event in connector.ingest(config)
-        ]
+    fetch = build_fetch(connector, config)
 
     result = await engine.execute_incremental_sync(fetch)
 
@@ -340,13 +360,11 @@ async def test_google_workspace_empty_sync(config):
     assert result.assets_pushed == 0
     assert len(platform.pushed_assets) == 0
 
-
 @pytest.mark.asyncio
 async def test_google_workspace_push_failure_preserves_checkpoint(
     config,
-):
+    ):
     events = [make_event()]
-
     def client_factory(credentials):
         return FakeClients(credentials, events)
 
@@ -358,7 +376,9 @@ async def test_google_workspace_push_failure_preserves_checkpoint(
 
     platform = MagicMock()
     platform.get_checkpoint.return_value = None
-    platform.push_assets.side_effect = RuntimeError("platform push failed")
+    platform.push_assets.side_effect = RuntimeError(
+        "platform push failed"
+    )
 
     engine = HardenedSyncEngine(
         "google_workspace",
@@ -366,11 +386,7 @@ async def test_google_workspace_push_failure_preserves_checkpoint(
         retry_base_delay_seconds=0,
     )
 
-    async def fetch():
-        return [
-            event
-            async for event in connector.ingest(config)
-        ]
+    fetch = build_fetch(connector, config)
 
     result = await engine.execute_incremental_sync(fetch)
 

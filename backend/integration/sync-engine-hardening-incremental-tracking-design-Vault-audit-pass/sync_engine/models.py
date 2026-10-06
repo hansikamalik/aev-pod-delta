@@ -73,7 +73,10 @@ class SyncResult(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     status: str
-    assets_pushed: int
-    high_water_mark: str
+    mode: str = "incremental"
+    assets_discovered: int = 0
+    assets_pushed: int = 0
+    assets_skipped: int = 0
+    checkpoint: Optional[Checkpoint] = None
     errors: List[str] = Field(default_factory=list)
     vault_audit_passed: bool = True
