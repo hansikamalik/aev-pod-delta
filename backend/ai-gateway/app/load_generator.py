@@ -3,58 +3,74 @@
 # 2. Run the load test script: python app/load_generator.py
 
 import asyncio
-import httpx
 import time
+import httpx
 
-# Total requests aur concurrent users configure kar le
+# Configuration settings for total requests and target endpoint
 TOTAL_REQUESTS = 100
-CONCURRENT_USERS = 10
+URL = "http://127.0.0.1:8000/copilot/query"
+
+# Generate a pool of distinct user identifiers to simulate multi-tenant traffic
+USERS = [f"user_org_{i}" for i in range(1, 11)]
+
 
 async def send_request(client, index):
-    # Har request ke liye alag user ID generate karein (e.g., user_1, user_2, ... user_10)
-    user_id = f"user_{index % 10 + 1}"
-    headers = {"X-User-ID": user_id}  # Agar header ke through user pass hota hai
-    
-    # Payload ya endpoint jahan request ja rahi hai
-    url = "http://127.0.0.1:8000/copilot/query" # Ya jo bhi tera endpoint ho
-    payload = {"query": "test query", "user_id": user_id} # Agar body mein hai
+  # Assign a distinct user ID based on the request index
+  user_id = USERS[index % len(USERS)]
 
-    try:
-        response = await client.post(url, json=payload, headers=headers, timeout=10.0)
-        return response.status_code
-    except Exception as e:
-        return "connection_error"
+  # Transmit the user identifier via HTTP headers for rate-limiting evaluation
+  headers = {"X-User-ID": user_id}
+
+  # Construct the request payload using the expected schema while omitting redundant body parameters
+  payload = {"question": f"Test query {index}"}
+
+  try:
+    response = await client.post(
+        URL, json=payload, headers=headers, timeout=15.0
+    )
+    return response.status_code
+  except httpx.RequestError:
+    return "connection_error"
+
 
 async def main():
-    start_time = time.time()
-    
-    success_count = 0
-    rate_limited_count = 0
-    server_error_count = 0
-    connection_errors = 0
+  print(
+      f"Starting load test with {TOTAL_REQUESTS} requests across {len(USERS)}"
+      " distinct users..."
+  )
+  start_time = time.time()
 
-    async with httpx.AsyncClient() as client:
-        tasks = [send_request(client, i) for i in range(TOTAL_REQUESTS)]
-        results = await asyncio.gather(*tasks)
+  success_count = 0
+  rate_limited_count = 0
+  server_error_count = 0
+  connection_errors = 0
 
-    for status in results:
-        if status == 200:
-            success_count += 1
-        elif status == 429:
-            rate_limited_count += 1
-        elif status in [500, 502, 503, 504]:
-            server_error_count += 1
-        else:
-            connection_errors += 1
+  async with httpx.AsyncClient() as client:
+    tasks = [send_request(client, i) for i in range(TOTAL_REQUESTS)]
+    results = await asyncio.gather(*tasks)
 
-    total_time = time.time() - start_time
+  for status in results:
+    if status == 200:
+      success_count += 1
+    elif status == 429:
+      rate_limited_count += 1  # Expected throttling response (rate-limited)
+    elif status in [500, 502, 503, 504]:
+      server_error_count += 1  # Actual server errors and unexpected failures
+    else:
+      connection_errors += 1
 
-    print("\n--- Load Test Summary ---")
-    print(f"Total Time Taken:     {total_time:.2f} seconds")
-    print(f"Successful (200 OK):  {success_count}")
-    print(f"Rate-Limited (429):   {rate_limited_count} (Expected throttling)")
-    print(f"Server Errors/Fail:   {server_error_count} (Actual failures/bugs)")
-    print(f"Connection Errors:    {connection_errors}")
+  total_time = time.time() - start_time
+
+  print("\n--- Load Test Summary ---")
+  print(f"Total Time Taken:       {total_time:.2f} seconds")
+  print(f"Successful (200 OK):    {success_count}")
+  print(f"Rate-Limited (429):     {rate_limited_count} (Expected throttling)")
+  print(
+      f"Server Errors/Fail:     {server_error_count} (Actual failures/bugs"
+      " - 500s)"
+  )
+  print(f"Connection Errors:      {connection_errors}")
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+  asyncio.run(main())
