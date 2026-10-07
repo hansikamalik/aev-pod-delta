@@ -13,6 +13,7 @@ from app import asset_search, exposure_query, mock_tools  # noqa: F401
 from app.audit_log import (  # noqa: F401
     cleanup_expired_rows,
     log_interaction,
+    query_interactions,
     setup_database,
     update_fact_check,
 )
@@ -220,6 +221,7 @@ def query(
         tokens=usage["total_tokens"],
         cost=cost_info["estimated_cost"],
         citations=citations,
+        model=result.get("model", "unknown"),
     )
 
     fallback_metrics["total_requests"] += 1
@@ -250,6 +252,39 @@ def query(
         "fallback_used": is_fallback,
         "fallback_reason": result.get("fallback_reason"),
     }
+
+
+@app.get("/copilot/audit-log")
+def get_audit_log(
+    user_id: Optional[str] = None,
+    model: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    limit: int = 50,
+    x_user_role: Optional[str] = Header(default="anonymous"),
+):
+    """Filter the ai_interactions audit log. Admin/auditor only."""
+
+    if not is_allowed(x_user_role, "audit_query"):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "Permission denied",
+                "reason": (
+                    f"Role '{x_user_role}' is not permitted "
+                    "to read the audit log."
+                ),
+            },
+        )
+
+    rows = query_interactions(
+        user_id=user_id,
+        model=model,
+        start_date=start_date,
+        end_date=end_date,
+        limit=limit,
+    )
+    return {"count": len(rows), "results": rows}
 
 
 @app.post("/webhooks/fact-check")
