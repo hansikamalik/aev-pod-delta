@@ -2,75 +2,59 @@
 # 1. Ensure the FastAPI server is running: python -m uvicorn app.main:app --reload
 # 2. Run the load test script: python app/load_generator.py
 
-import concurrent.futures
-import logging
-import random
+import asyncio
+import httpx
 import time
-import requests
 
-# Configure professional logging format
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
-)
-logger = logging.getLogger(__name__)
+# Total requests aur concurrent users configure kar le
+TOTAL_REQUESTS = 100
+CONCURRENT_USERS = 10
 
-TARGET_URL = "http://127.0.0.1:8000/copilot/query"
+async def send_request(client, index):
+    # Har request ke liye alag user ID generate karein (e.g., user_1, user_2, ... user_10)
+    user_id = f"user_{index % 10 + 1}"
+    headers = {"X-User-ID": user_id}  # Agar header ke through user pass hota hai
+    
+    # Payload ya endpoint jahan request ja rahi hai
+    url = "http://127.0.0.1:8000/copilot/query" # Ya jo bhi tera endpoint ho
+    payload = {"query": "test query", "user_id": user_id} # Agar body mein hai
 
-SAMPLE_QUERIES = [
-    "What is the policy on secure data handling?",
-    "Explain the risk of service account keys.",
-    "How do I configure the API gateway fallback?",
-    "Test query for synthetic traffic generation",
-    "What are the best practices for secure coding?",
-]
-
-
-def send_request(request_id: int):
-    payload = {"question": random.choice(SAMPLE_QUERIES)}
-    headers = {"Content-Type": "application/json"}
-
-    start_time = time.time()
     try:
-        response = requests.post(TARGET_URL, json=payload, headers=headers, timeout=10)
-        duration = time.time() - start_time
-        logger.info(
-            f"Request #{request_id} completed | Status: {response.status_code} |"
-            f" Latency: {duration:.3f}s"
-        )
+        response = await client.post(url, json=payload, headers=headers, timeout=10.0)
         return response.status_code
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Request #{request_id} failed: {e}")
-        return None
+    except Exception as e:
+        return "connection_error"
 
-
-def run_load_generator(total_requests: int = 30, max_workers: int = 5):
-    logger.info(
-        f"Initiating load test: {total_requests} total requests, concurrency:"
-        f" {max_workers}"
-    )
-
-    start_total = time.time()
+async def main():
+    start_time = time.time()
+    
     success_count = 0
-    failure_count = 0
+    rate_limited_count = 0
+    server_error_count = 0
+    connection_errors = 0
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(send_request, i + 1): i + 1 for i in range(total_requests)
-        }
+    async with httpx.AsyncClient() as client:
+        tasks = [send_request(client, i) for i in range(TOTAL_REQUESTS)]
+        results = await asyncio.gather(*tasks)
 
-        for future in concurrent.futures.as_completed(futures):
-            status = future.result()
-            if status == 200:
-                success_count += 1
-            else:
-                failure_count += 1
+    for status in results:
+        if status == 200:
+            success_count += 1
+        elif status == 429:
+            rate_limited_count += 1
+        elif status in [500, 502, 503, 504]:
+            server_error_count += 1
+        else:
+            connection_errors += 1
 
-    total_duration = time.time() - start_total
-    logger.info("Load test execution summary:")
-    logger.info(f"Total Duration: {total_duration:.2f} seconds")
-    logger.info(f"Successful Requests: {success_count}")
-    logger.info(f"Failed Requests: {failure_count}")
+    total_time = time.time() - start_time
 
+    print("\n--- Load Test Summary ---")
+    print(f"Total Time Taken:     {total_time:.2f} seconds")
+    print(f"Successful (200 OK):  {success_count}")
+    print(f"Rate-Limited (429):   {rate_limited_count} (Expected throttling)")
+    print(f"Server Errors/Fail:   {server_error_count} (Actual failures/bugs)")
+    print(f"Connection Errors:    {connection_errors}")
 
 if __name__ == "__main__":
-    run_load_generator(total_requests=30, max_workers=5)
+    asyncio.run(main())
