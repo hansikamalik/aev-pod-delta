@@ -112,6 +112,25 @@ def query(
 ):
     """Process a Copilot query with guardrails, tools, and tracking."""
 
+    raw_question = request.question.strip()
+    if not raw_question:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation error",
+                "message": "Question cannot be empty or whitespace only",
+            },
+        )
+
+    if len(request.question) > 8000:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Payload too large",
+                "message": "Question exceeds maximum allowed length of 8000 characters",
+            },
+        )
+
     rate_info = check_rate_limit(
         user_id=x_user_id,
         org_tier=x_org_tier,
@@ -134,7 +153,16 @@ def query(
             },
         )
 
-    sanitized_question = input_result["text"]
+    sanitized_question = input_result["text"].strip()
+    if not sanitized_question:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation error",
+                "message": "Question cannot be empty after sanitization",
+            },
+        )
+
     question_for_model = sanitized_question
     tool_call = None
     citations: List[Any] = []
@@ -187,7 +215,16 @@ def query(
                 f"{json.dumps(tool_result, default=str)}"
             )
 
-    result = ask_gpt(question_for_model)
+    try:
+        result = ask_gpt(question_for_model)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "Upstream LLM failure",
+                "message": str(exc),
+            },
+        )
 
     if not isinstance(result, dict):
         result = {
