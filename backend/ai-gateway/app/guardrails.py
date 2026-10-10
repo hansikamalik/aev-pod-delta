@@ -142,6 +142,12 @@ class Guardrails:
             r"repeat\s+(your\s+)?instructions\s+back",
             r"what\s+were\s+you\s+told\s+at\s+the\s+start",
             r"show\s+me\s+(what\s+)?your\s+initial\s+prompt",
+
+            # Tool calling & log/audit dumping attempts
+            r"(call|run|execute|invoke)\s+[a-z0-9_]*audit[a-z0-9_]*",
+            r"(dump|leak|export|extract|show|get|display)\s+(all\s+|every\s+)?(user'?s?\s+)?(prompts?|interactions?|logs?|audit)",
+            r"(call|run|execute|invoke)\s+[a-z0-9_]*\s+and\s+(dump|leak|export|extract|show|get)\b",
+            r"(call|run|execute|invoke)\s+(the\s+)?(tool|function|api)\s+[a-z0-9_]+",
         ]
 
         # ------------------------------------------------------------------

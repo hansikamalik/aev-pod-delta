@@ -99,7 +99,7 @@ def test_copilot_query_blocked_by_guardrails():
 
 def test_copilot_query_upstream_failure_returns_502(monkeypatch):
     def mock_failing_ask_gpt(question):
-        raise RuntimeError("Gemma upstream cluster timeout")
+        raise RuntimeError("Gemma upstream cluster timeout at https://internal.cluster:8080")
 
     def mock_rate_limit(user_id, org_tier="free"):
         return {"allowed": True, "tokens_remaining": 4, "bucket_capacity": 8, "org_tier": org_tier}
@@ -115,5 +115,27 @@ def test_copilot_query_upstream_failure_returns_502(monkeypatch):
         )
     assert response.status_code == 502
     data = response.json()
-    assert data["detail"]["error"] == "Upstream LLM failure"
+    assert data["detail"]["error"] == "Upstream model failure"
+    assert data["detail"]["message"] == "Upstream model failure"
+    assert "internal.cluster" not in response.text
+
+
+def test_rate_limiter_runs_before_input_validation(monkeypatch):
+    called = {"rate_limit": False}
+
+    def mock_rate_limit(user_id, org_tier="free"):
+        called["rate_limit"] = True
+        return {"allowed": True, "tokens_remaining": 3, "bucket_capacity": 8, "org_tier": org_tier}
+
+    monkeypatch.setattr("app.main.check_rate_limit", mock_rate_limit)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/copilot/query",
+            headers={"X-User-ID": "test-user"},
+            json={"question": "   "},
+        )
+    assert response.status_code == 400
+    assert called["rate_limit"] is True
+
 

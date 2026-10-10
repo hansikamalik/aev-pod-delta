@@ -2,6 +2,7 @@
 """AI Gateway API with guardrails, rate limiting, usage tracking, and tool dispatch."""
 
 import json
+import logging
 import re
 from typing import Any, List, Optional
 
@@ -41,6 +42,8 @@ fallback_metrics = {
     "fallback_reasons": {},
 }
 
+
+logger = logging.getLogger("ai_gateway.main")
 
 guardrails = Guardrails()
 ASSET_ID_PATTERN = re.compile(r"\basset-\d+\b", re.IGNORECASE)
@@ -112,6 +115,17 @@ def query(
 ):
     """Process a Copilot query with guardrails, tools, and tracking."""
 
+    rate_info = check_rate_limit(
+        user_id=x_user_id,
+        org_tier=x_org_tier,
+    )
+
+    if not rate_info.get("allowed", False):
+        raise HTTPException(
+            status_code=429,
+            detail={"error": "Rate limit exceeded"},
+        )
+
     raw_question = request.question.strip()
     if not raw_question:
         raise HTTPException(
@@ -129,17 +143,6 @@ def query(
                 "error": "Payload too large",
                 "message": "Question exceeds maximum allowed length of 8000 characters",
             },
-        )
-
-    rate_info = check_rate_limit(
-        user_id=x_user_id,
-        org_tier=x_org_tier,
-    )
-
-    if not rate_info.get("allowed", False):
-        raise HTTPException(
-            status_code=429,
-            detail={"error": "Rate limit exceeded"},
         )
 
     input_result = guardrails.process_input(request.question)
@@ -218,11 +221,12 @@ def query(
     try:
         result = ask_gpt(question_for_model)
     except Exception as exc:
+        logger.error(f"Upstream model execution failed: {exc}", exc_info=True)
         raise HTTPException(
             status_code=502,
             detail={
-                "error": "Upstream LLM failure",
-                "message": str(exc),
+                "error": "Upstream model failure",
+                "message": "Upstream model failure",
             },
         )
 
