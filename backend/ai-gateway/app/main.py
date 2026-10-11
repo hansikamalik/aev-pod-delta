@@ -85,7 +85,6 @@ def _ensure_risk_score_citation(
         citations.append(expected_citation)
 
 
-
 @app.on_event("startup")
 def startup_event():
     """Initialize the database schema when the application starts."""
