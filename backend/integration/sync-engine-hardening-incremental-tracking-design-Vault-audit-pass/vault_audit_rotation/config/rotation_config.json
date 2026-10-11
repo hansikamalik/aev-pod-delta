@@ -1,0 +1,41 @@
+{
+  "vault_addr": "http://127.0.0.1:8200",
+  "audit_redaction_tag": "[REDACTED_VAULT_AUDIT]",
+  "connectors": [
+    {
+      "name": "Azure_Normalization_Platform_Push",
+      "secret_path": "secret/data/azure_norm",
+      "sensitive_keys": ["client_secret", "access_token", "tenant_key"]
+    },
+    {
+      "name": "cyberark_auth_module",
+      "secret_path": "secret/data/cyberark_auth",
+      "sensitive_keys": ["session_token", "api_key", "auth_secret"]
+    },
+    {
+      "name": "cyberark-discovery-integration",
+      "secret_path": "secret/data/cyberark_discovery",
+      "sensitive_keys": ["priv_key", "service_pass"]
+    },
+    {
+      "name": "elastic_connector",
+      "secret_path": "secret/data/elastic",
+      "sensitive_keys": ["elastic_password", "api_key"]
+    },
+    {
+      "name": "qradar_connector",
+      "secret_path": "secret/data/qradar",
+      "sensitive_keys": ["sec_token", "admin_pass"]
+    },
+    {
+      "name": "splunk_connector",
+      "secret_path": "secret/data/splunk",
+      "sensitive_keys": ["hec_token", "session_id"]
+    },
+    {
+      "name": "vault-enterprise-framework",
+      "secret_path": "secret/data/vault_framework",
+      "sensitive_keys": ["root_token", "unseal_key"]
+    }
+  ]
+}

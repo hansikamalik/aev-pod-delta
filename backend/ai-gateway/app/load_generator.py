@@ -5,7 +5,6 @@ import concurrent.futures
 import logging
 import math
 import os
-import random
 import statistics
 import sys
 import time
@@ -22,6 +21,9 @@ TARGET_URL = os.getenv(
     "LOAD_TEST_URL",
     "http://127.0.0.1:8000/copilot/query",
 )
+TOTAL_REQUESTS = int(os.getenv("LOAD_TEST_REQUESTS", "100"))
+MAX_WORKERS = int(os.getenv("LOAD_TEST_WORKERS", "10"))
+USER_COUNT = int(os.getenv("LOAD_TEST_USERS", "10"))
 
 SAMPLE_QUERIES = [
     "What is the policy on secure data handling?",
@@ -34,9 +36,14 @@ SAMPLE_QUERIES = [
 
 def send_request(request_id: int) -> dict:
     """Send one request and return its status and latency."""
-    payload = {"question": random.choice(SAMPLE_QUERIES)}
+    user_id = f"user_org_{((request_id - 1) % USER_COUNT) + 1}"
+    payload = {
+        "question": SAMPLE_QUERIES[
+            (request_id - 1) % len(SAMPLE_QUERIES)
+        ]
+    }
     headers = {
-        "X-User-ID": f"load-test-user-{request_id}",
+        "X-User-ID": user_id,
         "X-Org-Tier": "free",
     }
     start = time.perf_counter()
@@ -51,12 +58,12 @@ def send_request(request_id: int) -> dict:
         latency = time.perf_counter() - start
 
         logger.info(
-            "Request #%s | status=%s | latency=%.3fs",
+            "Request #%s | user=%s | status=%s | latency=%.3fs",
             request_id,
+            user_id,
             response.status_code,
             latency,
         )
-
         return {
             "status": response.status_code,
             "latency": latency,
@@ -65,22 +72,27 @@ def send_request(request_id: int) -> dict:
     except requests.RequestException as exc:
         latency = time.perf_counter() - start
         logger.error("Request #%s failed: %s", request_id, exc)
-
         return {
             "status": None,
             "latency": latency,
         }
 
 
-def run_load_generator(total_requests: int = 30, max_workers: int = 5) -> list:
+def run_load_generator(
+    total_requests: int = TOTAL_REQUESTS,
+    max_workers: int = MAX_WORKERS,
+) -> list:
     """Run a load test, report metrics, and return individual results."""
     if total_requests < 1 or max_workers < 1:
         raise ValueError("Request count and workers must be positive")
+    if USER_COUNT < 1:
+        raise ValueError("LOAD_TEST_USERS must be positive")
 
     logger.info(
-        "Starting load test: requests=%s, concurrency=%s, target=%s",
+        "Starting load test: requests=%s, concurrency=%s, users=%s, target=%s",
         total_requests,
         max_workers,
+        USER_COUNT,
         TARGET_URL,
     )
 
@@ -90,8 +102,8 @@ def run_load_generator(total_requests: int = 30, max_workers: int = 5) -> list:
         max_workers=max_workers
     ) as executor:
         futures = [
-            executor.submit(send_request, index + 1)
-            for index in range(total_requests)
+            executor.submit(send_request, request_id)
+            for request_id in range(1, total_requests + 1)
         ]
         results = [future.result() for future in futures]
 
@@ -136,7 +148,7 @@ def run_load_generator(total_requests: int = 30, max_workers: int = 5) -> list:
 
 
 if __name__ == "__main__":
-    test_results = run_load_generator(total_requests=30, max_workers=5)
+    test_results = run_load_generator()
     failed_requests = sum(
         result["status"] is None
         or not 200 <= result["status"] < 300

@@ -1,0 +1,8 @@
+============================= test session starts ==============================
+____ test_vault_enterprise_framework_sync [VaultEnterpriseFramework] ____
+Traceback (most recent call last):
+  File "regression_tests/test_vault.py", line 42, in test_sync
+    VaultAuditLogger.assert_vault_compliant(output)
+VaultAuditViolationError: Vault Audit Check Failed! Raw credential exposed in log output:
+  vault_token="s.88f72a19-482a-4b92-b430-c3d3f9e230a1"
+=========================== 1 failed in 0.12s ===========================

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from typing import Any, Dict
-from sync_engine.models import Asset
+from .models import Asset
 
 SECRET_KEY_BLOCKLIST = {
     "bearer_token", "token", "authorization", "password", 
@@ -10,7 +10,7 @@ SECRET_KEY_BLOCKLIST = {
 
 
 def sanitize_payload(raw_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Recursively redacts sensitive security keys from incoming raw data."""
+    """Recursively redacts sensitive keys from incoming raw connector data."""
     clean_payload = {}
     for key, value in raw_data.items():
         if key.lower() in SECRET_KEY_BLOCKLIST:
@@ -29,8 +29,8 @@ def sanitize_payload(raw_data: Dict[str, Any]) -> Dict[str, Any]:
 
 def normalize_event_to_asset(event: Dict[str, Any], connector_name: str) -> Asset:
     asset_id = str(event.get("_cd") or event.get("id") or event.get("uuid") or hash(str(event)))
-    
     raw_time = event.get("_time") or event.get("timestamp") or event.get("created_at")
+    
     discovered_at = datetime.now(timezone.utc)
     if raw_time:
         try:

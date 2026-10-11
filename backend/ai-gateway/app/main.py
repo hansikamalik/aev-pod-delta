@@ -2,6 +2,7 @@
 """AI Gateway API with guardrails, rate limiting, usage tracking, and tool dispatch."""
 
 import json
+import logging
 import re
 from typing import Any, List, Optional
 
@@ -13,6 +14,7 @@ from app import asset_search, exposure_query, mock_tools  # noqa: F401
 from app.audit_log import (  # noqa: F401
     cleanup_expired_rows,
     log_interaction,
+    query_interactions,
     setup_database,
     update_fact_check,
 )
@@ -40,6 +42,8 @@ fallback_metrics = {
     "fallback_reasons": {},
 }
 
+
+logger = logging.getLogger("ai_gateway.main")
 
 guardrails = Guardrails()
 ASSET_ID_PATTERN = re.compile(r"\basset-\d+\b", re.IGNORECASE)
@@ -121,6 +125,25 @@ def query(
             detail={"error": "Rate limit exceeded"},
         )
 
+    raw_question = request.question.strip()
+    if not raw_question:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation error",
+                "message": "Question cannot be empty or whitespace only",
+            },
+        )
+
+    if len(request.question) > 8000:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Payload too large",
+                "message": "Question exceeds maximum allowed length of 8000 characters",
+            },
+        )
+
     input_result = guardrails.process_input(request.question)
 
     if not input_result["allowed"]:
@@ -132,7 +155,16 @@ def query(
             },
         )
 
-    sanitized_question = input_result["text"]
+    sanitized_question = input_result["text"].strip()
+    if not sanitized_question:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation error",
+                "message": "Question cannot be empty after sanitization",
+            },
+        )
+
     question_for_model = sanitized_question
     tool_call = None
     citations: List[Any] = []
@@ -185,7 +217,17 @@ def query(
                 f"{json.dumps(tool_result, default=str)}"
             )
 
-    result = ask_gpt(question_for_model)
+    try:
+        result = ask_gpt(question_for_model)
+    except Exception as exc:
+        logger.error(f"Upstream model execution failed: {exc}", exc_info=True)
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": "Upstream model failure",
+                "message": "Upstream model failure",
+            },
+        )
 
     if not isinstance(result, dict):
         result = {
@@ -219,6 +261,7 @@ def query(
         tokens=usage["total_tokens"],
         cost=cost_info["estimated_cost"],
         citations=citations,
+        model=result.get("model", "unknown"),
     )
 
     fallback_metrics["total_requests"] += 1
@@ -249,6 +292,39 @@ def query(
         "fallback_used": is_fallback,
         "fallback_reason": result.get("fallback_reason"),
     }
+
+
+@app.get("/copilot/audit-log")
+def get_audit_log(
+    user_id: Optional[str] = None,
+    model: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    limit: int = 50,
+    x_user_role: Optional[str] = Header(default="anonymous"),
+):
+    """Filter the ai_interactions audit log. Admin/auditor only."""
+
+    if not is_allowed(x_user_role, "audit_query"):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "Permission denied",
+                "reason": (
+                    f"Role '{x_user_role}' is not permitted "
+                    "to read the audit log."
+                ),
+            },
+        )
+
+    rows = query_interactions(
+        user_id=user_id,
+        model=model,
+        start_date=start_date,
+        end_date=end_date,
+        limit=limit,
+    )
+    return {"count": len(rows), "results": rows}
 
 
 @app.post("/webhooks/fact-check")

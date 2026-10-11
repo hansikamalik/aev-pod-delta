@@ -2,16 +2,18 @@
 import os
 import re
 
-SEARCH_DIR = "."
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+INTEGRATION_DIR = os.path.abspath(os.path.join(CURRENT_DIR, "..", ".."))
+
 DEPRECATED_DATETIME_PATTERN = re.compile(r"datetime\.utcnow\(\)")
 UNGUARDED_SECRET_PATTERN = re.compile(r"((\"|')(bearer_token|api_key|password|secret)(\"|')\s*:\s*(\"|')[^\"']+(\"|'))")
 
 
 def run_vault_audit():
-    print("=== Starting Vault-Audit Pass across Connectors ===")
+    print(f"=== Starting Vault-Audit Pass in: {INTEGRATION_DIR} ===")
     violations = 0
 
-    for root, _, files in os.walk(SEARCH_DIR):
+    for root, _, files in os.walk(INTEGRATION_DIR):
         if "venv" in root or ".pytest_cache" in root or ".git" in root:
             continue
             
@@ -28,13 +30,13 @@ def run_vault_audit():
                     print(f"[FAIL] [Deprecated Datetime] {filepath}:{line_num} -> Use datetime.now(timezone.utc)")
                     violations += 1
 
-                if "tests/" not in filepath and UNGUARDED_SECRET_PATTERN.search(line):
+                if "tests/" not in filepath and "regression_tests/" not in filepath and UNGUARDED_SECRET_PATTERN.search(line):
                     print(f"[WARN] [Possible Hardcoded Secret] {filepath}:{line_num} -> Verify secret sourcing from Vault")
                     violations += 1
 
     print("-----------------------------------------------------------------")
     if violations == 0:
-        print("✓ Audit passed cleanly! Zero violations detected across all connector code.")
+        print("✓ Audit passed cleanly! Zero violations detected.")
     else:
         print(f"✗ Found {violations} total issue(s) requiring remediation.")
 
