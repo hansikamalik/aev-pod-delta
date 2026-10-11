@@ -3,9 +3,11 @@
 
 import concurrent.futures
 import logging
+import math
 import os
 import random
 import statistics
+import sys
 import time
 
 import requests
@@ -30,7 +32,7 @@ SAMPLE_QUERIES = [
 ]
 
 
-def send_request(request_id: int):
+def send_request(request_id: int) -> dict:
     """Send one request and return its status and latency."""
     payload = {"question": random.choice(SAMPLE_QUERIES)}
     headers = {
@@ -64,11 +66,14 @@ def send_request(request_id: int):
         latency = time.perf_counter() - start
         logger.error("Request #%s failed: %s", request_id, exc)
 
-        return {"status": None, "latency": latency}
+        return {
+            "status": None,
+            "latency": latency,
+        }
 
 
-def run_load_generator(total_requests=30, max_workers=5):
-    """Run a small load test and summarize its results."""
+def run_load_generator(total_requests: int = 30, max_workers: int = 5) -> list:
+    """Run a load test, report metrics, and return individual results."""
     if total_requests < 1 or max_workers < 1:
         raise ValueError("Request count and workers must be positive")
 
@@ -98,24 +103,17 @@ def run_load_generator(total_requests=30, max_workers=5):
         and 200 <= result["status"] < 300
         for result in results
     )
-    rate_limited = sum(
-        result["status"] == 429 for result in results
-    )
+    rate_limited = sum(result["status"] == 429 for result in results)
     server_errors = sum(
         result["status"] is not None
         and result["status"] >= 500
         for result in results
     )
-    network_errors = sum(
-        result["status"] is None for result in results
-    )
+    network_errors = sum(result["status"] is None for result in results)
     failed = total_requests - successful
 
     average = statistics.mean(latencies)
-    p95_index = max(
-        0,
-        int(0.95 * len(latencies) + 0.999) - 1,
-    )
+    p95_index = max(0, math.ceil(0.95 * len(latencies)) - 1)
     p95 = latencies[p95_index]
 
     logger.info("----- LOAD TEST SUMMARY -----")
@@ -134,6 +132,14 @@ def run_load_generator(total_requests=30, max_workers=5):
         total_requests / elapsed if elapsed else 0,
     )
 
+    return results
+
 
 if __name__ == "__main__":
-    run_load_generator(total_requests=30, max_workers=5)
+    test_results = run_load_generator(total_requests=30, max_workers=5)
+    failed_requests = sum(
+        result["status"] is None
+        or not 200 <= result["status"] < 300
+        for result in test_results
+    )
+    sys.exit(1 if failed_requests else 0)

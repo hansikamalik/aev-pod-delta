@@ -81,12 +81,11 @@ def _ensure_risk_score_citation(
         citations.append(expected_citation)
 
 
+
 @app.on_event("startup")
 def startup_event():
-    """Initialize application resources when required."""
-    # Database initialization remains disabled to preserve existing behavior.
-    # Call setup_database() here when startup database setup is required.
-    pass
+    """Initialize the database schema when the application starts."""
+    setup_database()
 
 
 @app.get("/")
