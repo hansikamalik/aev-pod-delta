@@ -1,20 +1,25 @@
-# How to run this load generator:
-# 1. Ensure the FastAPI server is running: python -m uvicorn app.main:app --reload
-# 2. Run the load test script: python app/load_generator.py
+
+"""Load-test harness for the AI Gateway Copilot query endpoint."""
 
 import concurrent.futures
 import logging
+import os
 import random
+import statistics
 import time
+
 import requests
 
-# Configure professional logging format
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
 )
 logger = logging.getLogger(__name__)
 
-TARGET_URL = "http://127.0.0.1:8000/copilot/query"
+TARGET_URL = os.getenv(
+    "LOAD_TEST_URL",
+    "http://127.0.0.1:8000/copilot/query",
+)
 
 SAMPLE_QUERIES = [
     "What is the policy on secure data handling?",
@@ -26,50 +31,108 @@ SAMPLE_QUERIES = [
 
 
 def send_request(request_id: int):
+    """Send one request and return its status and latency."""
     payload = {"question": random.choice(SAMPLE_QUERIES)}
-    headers = {"Content-Type": "application/json"}
+    headers = {
+        "X-User-ID": f"load-test-user-{request_id}",
+        "X-Org-Tier": "free",
+    }
+    start = time.perf_counter()
 
-    start_time = time.time()
     try:
-        response = requests.post(TARGET_URL, json=payload, headers=headers, timeout=10)
-        duration = time.time() - start_time
-        logger.info(
-            f"Request #{request_id} completed | Status: {response.status_code} |"
-            f" Latency: {duration:.3f}s"
+        response = requests.post(
+            TARGET_URL,
+            json=payload,
+            headers=headers,
+            timeout=15,
         )
-        return response.status_code
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Request #{request_id} failed: {e}")
-        return None
+        latency = time.perf_counter() - start
 
+        logger.info(
+            "Request #%s | status=%s | latency=%.3fs",
+            request_id,
+            response.status_code,
+            latency,
+        )
 
-def run_load_generator(total_requests: int = 30, max_workers: int = 5):
-    logger.info(
-        f"Initiating load test: {total_requests} total requests, concurrency:"
-        f" {max_workers}"
-    )
-
-    start_total = time.time()
-    success_count = 0
-    failure_count = 0
-
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {
-            executor.submit(send_request, i + 1): i + 1 for i in range(total_requests)
+        return {
+            "status": response.status_code,
+            "latency": latency,
         }
 
-        for future in concurrent.futures.as_completed(futures):
-            status = future.result()
-            if status == 200:
-                success_count += 1
-            else:
-                failure_count += 1
+    except requests.RequestException as exc:
+        latency = time.perf_counter() - start
+        logger.error("Request #%s failed: %s", request_id, exc)
 
-    total_duration = time.time() - start_total
-    logger.info("Load test execution summary:")
-    logger.info(f"Total Duration: {total_duration:.2f} seconds")
-    logger.info(f"Successful Requests: {success_count}")
-    logger.info(f"Failed Requests: {failure_count}")
+        return {"status": None, "latency": latency}
+
+
+def run_load_generator(total_requests=30, max_workers=5):
+    """Run a small load test and summarize its results."""
+    if total_requests < 1 or max_workers < 1:
+        raise ValueError("Request count and workers must be positive")
+
+    logger.info(
+        "Starting load test: requests=%s, concurrency=%s, target=%s",
+        total_requests,
+        max_workers,
+        TARGET_URL,
+    )
+
+    start = time.perf_counter()
+
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=max_workers
+    ) as executor:
+        futures = [
+            executor.submit(send_request, index + 1)
+            for index in range(total_requests)
+        ]
+        results = [future.result() for future in futures]
+
+    elapsed = time.perf_counter() - start
+    latencies = sorted(result["latency"] for result in results)
+
+    successful = sum(
+        result["status"] is not None
+        and 200 <= result["status"] < 300
+        for result in results
+    )
+    rate_limited = sum(
+        result["status"] == 429 for result in results
+    )
+    server_errors = sum(
+        result["status"] is not None
+        and result["status"] >= 500
+        for result in results
+    )
+    network_errors = sum(
+        result["status"] is None for result in results
+    )
+    failed = total_requests - successful
+
+    average = statistics.mean(latencies)
+    p95_index = max(
+        0,
+        int(0.95 * len(latencies) + 0.999) - 1,
+    )
+    p95 = latencies[p95_index]
+
+    logger.info("----- LOAD TEST SUMMARY -----")
+    logger.info("Total requests: %s", total_requests)
+    logger.info("Successful 2xx responses: %s", successful)
+    logger.info("Failed/non-2xx responses: %s", failed)
+    logger.info("Rate-limited responses (429): %s", rate_limited)
+    logger.info("Server errors (5xx): %s", server_errors)
+    logger.info("Network errors: %s", network_errors)
+    logger.info("Error rate: %.2f%%", failed / total_requests * 100)
+    logger.info("Total duration: %.2fs", elapsed)
+    logger.info("Average latency: %.3fs", average)
+    logger.info("P95 latency: %.3fs", p95)
+    logger.info(
+        "Throughput: %.2f requests/second",
+        total_requests / elapsed if elapsed else 0,
+    )
 
 
 if __name__ == "__main__":
