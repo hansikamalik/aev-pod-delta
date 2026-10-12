@@ -1,76 +1,157 @@
-# How to run this load generator:
-# 1. Ensure the FastAPI server is running: python -m uvicorn app.main:app --reload
-# 2. Run the load test script: python app/load_generator.py
 
-import asyncio
+"""Load-test harness for the AI Gateway Copilot query endpoint."""
+
+import concurrent.futures
+import logging
+import math
+import os
+import statistics
+import sys
 import time
-import httpx
 
-# Configuration settings for total requests and target endpoint
-TOTAL_REQUESTS = 100
-URL = "http://127.0.0.1:8000/copilot/query"
+import requests
 
-# Generate a pool of distinct user identifiers to simulate multi-tenant traffic
-USERS = [f"user_org_{i}" for i in range(1, 11)]
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+logger = logging.getLogger(__name__)
+
+TARGET_URL = os.getenv(
+    "LOAD_TEST_URL",
+    "http://127.0.0.1:8000/copilot/query",
+)
+TOTAL_REQUESTS = int(os.getenv("LOAD_TEST_REQUESTS", "100"))
+MAX_WORKERS = int(os.getenv("LOAD_TEST_WORKERS", "10"))
+USER_COUNT = int(os.getenv("LOAD_TEST_USERS", "10"))
+
+SAMPLE_QUERIES = [
+    "What is the policy on secure data handling?",
+    "Explain the risk of service account keys.",
+    "How do I configure the API gateway fallback?",
+    "Test query for synthetic traffic generation",
+    "What are the best practices for secure coding?",
+]
 
 
-async def send_request(client, index):
-  # Assign a distinct user ID based on the request index
-  user_id = USERS[index % len(USERS)]
+def send_request(request_id: int) -> dict:
+    """Send one request and return its status and latency."""
+    user_id = f"user_org_{((request_id - 1) % USER_COUNT) + 1}"
+    payload = {
+        "question": SAMPLE_QUERIES[
+            (request_id - 1) % len(SAMPLE_QUERIES)
+        ]
+    }
+    headers = {
+        "X-User-ID": user_id,
+        "X-Org-Tier": "free",
+    }
+    start = time.perf_counter()
 
-  # Transmit the user identifier via HTTP headers for rate-limiting evaluation
-  headers = {"X-User-ID": user_id}
+    try:
+        response = requests.post(
+            TARGET_URL,
+            json=payload,
+            headers=headers,
+            timeout=15,
+        )
+        latency = time.perf_counter() - start
 
-  # Construct the request payload using the expected schema while omitting redundant body parameters
-  payload = {"question": f"Test query {index}"}
+        logger.info(
+            "Request #%s | user=%s | status=%s | latency=%.3fs",
+            request_id,
+            user_id,
+            response.status_code,
+            latency,
+        )
+        return {
+            "status": response.status_code,
+            "latency": latency,
+        }
 
-  try:
-    response = await client.post(
-        URL, json=payload, headers=headers, timeout=15.0
+    except requests.RequestException as exc:
+        latency = time.perf_counter() - start
+        logger.error("Request #%s failed: %s", request_id, exc)
+        return {
+            "status": None,
+            "latency": latency,
+        }
+
+
+def run_load_generator(
+    total_requests: int = TOTAL_REQUESTS,
+    max_workers: int = MAX_WORKERS,
+) -> list:
+    """Run a load test, report metrics, and return individual results."""
+    if total_requests < 1 or max_workers < 1:
+        raise ValueError("Request count and workers must be positive")
+    if USER_COUNT < 1:
+        raise ValueError("LOAD_TEST_USERS must be positive")
+
+    logger.info(
+        "Starting load test: requests=%s, concurrency=%s, users=%s, target=%s",
+        total_requests,
+        max_workers,
+        USER_COUNT,
+        TARGET_URL,
     )
-    return response.status_code
-  except httpx.RequestError:
-    return "connection_error"
 
+    start = time.perf_counter()
 
-async def main():
-  print(
-      f"Starting load test with {TOTAL_REQUESTS} requests across {len(USERS)}"
-      " distinct users..."
-  )
-  start_time = time.time()
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=max_workers
+    ) as executor:
+        futures = [
+            executor.submit(send_request, request_id)
+            for request_id in range(1, total_requests + 1)
+        ]
+        results = [future.result() for future in futures]
 
-  success_count = 0
-  rate_limited_count = 0
-  server_error_count = 0
-  connection_errors = 0
+    elapsed = time.perf_counter() - start
+    latencies = sorted(result["latency"] for result in results)
 
-  async with httpx.AsyncClient() as client:
-    tasks = [send_request(client, i) for i in range(TOTAL_REQUESTS)]
-    results = await asyncio.gather(*tasks)
+    successful = sum(
+        result["status"] is not None
+        and 200 <= result["status"] < 300
+        for result in results
+    )
+    rate_limited = sum(result["status"] == 429 for result in results)
+    server_errors = sum(
+        result["status"] is not None
+        and result["status"] >= 500
+        for result in results
+    )
+    network_errors = sum(result["status"] is None for result in results)
+    failed = total_requests - successful
 
-  for status in results:
-    if status == 200:
-      success_count += 1
-    elif status == 429:
-      rate_limited_count += 1  # Expected throttling response (rate-limited)
-    elif status in [500, 502, 503, 504]:
-      server_error_count += 1  # Actual server errors and unexpected failures
-    else:
-      connection_errors += 1
+    average = statistics.mean(latencies)
+    p95_index = max(0, math.ceil(0.95 * len(latencies)) - 1)
+    p95 = latencies[p95_index]
 
-  total_time = time.time() - start_time
+    logger.info("----- LOAD TEST SUMMARY -----")
+    logger.info("Total requests: %s", total_requests)
+    logger.info("Successful 2xx responses: %s", successful)
+    logger.info("Failed/non-2xx responses: %s", failed)
+    logger.info("Rate-limited responses (429): %s", rate_limited)
+    logger.info("Server errors (5xx): %s", server_errors)
+    logger.info("Network errors: %s", network_errors)
+    logger.info("Error rate: %.2f%%", failed / total_requests * 100)
+    logger.info("Total duration: %.2fs", elapsed)
+    logger.info("Average latency: %.3fs", average)
+    logger.info("P95 latency: %.3fs", p95)
+    logger.info(
+        "Throughput: %.2f requests/second",
+        total_requests / elapsed if elapsed else 0,
+    )
 
-  print("\n--- Load Test Summary ---")
-  print(f"Total Time Taken:       {total_time:.2f} seconds")
-  print(f"Successful (200 OK):    {success_count}")
-  print(f"Rate-Limited (429):     {rate_limited_count} (Expected throttling)")
-  print(
-      f"Server Errors/Fail:     {server_error_count} (Actual failures/bugs"
-      " - 500s)"
-  )
-  print(f"Connection Errors:      {connection_errors}")
+    return results
 
 
 if __name__ == "__main__":
-  asyncio.run(main())
+    test_results = run_load_generator()
+    failed_requests = sum(
+        result["status"] is None
+        or not 200 <= result["status"] < 300
+        for result in test_results
+    )
+    sys.exit(1 if failed_requests else 0)

@@ -144,15 +144,26 @@ class Guardrails:
             r"show\s+me\s+(what\s+)?your\s+initial\s+prompt",
 
             # Tool calling & sensitive data/log dumping attempts
-            # 1. Action verb targeting sensitive tools (audit_query, policy_check, workflow_assist)
-            r"\b(call|invoke|run|execute)\s+(the\s+)?(tool\s+)?(audit_query|policy_check|workflow_assist)\b",
+            # 1. Action verb targeting sensitive tools
+            (
+                r"\b(call|invoke|run|execute)\s+(the\s+)?"
+                r"(tool\s+)?(audit_query|policy_check|workflow_assist)\b"
+            ),
             # 2. Action verb targeting ai_interactions table or database
             r"\b(dump|export|leak|drop|extract)\s+(the\s+)?ai_interactions\b",
-            # 3. Action verb targeting the audit log (dump/export/leak/show/list the audit log)
+            # 3. Action verb targeting the audit log
             r"\b(dump|export|leak|extract|show|list)\s+(the\s+)?audit\s+log\b",
             # 4. Action verb targeting prompts or conversations of other users
-            r"\b(dump|export|leak|extract|show|list)\s+[^.?!]*\b(all\s+users?|other\s+users?|every\s+user'?s?)\b[^.?!]*\b(prompts?|conversations?|queries|questions?|interactions?|logs?)\b",
-            r"\b(dump|export|leak|extract|show|list)\s+(every|all)\s+prompt\s+other\s+users?\b",
+            (
+                r"\b(dump|export|leak|extract|show|list)\s+[^.?!]*"
+                r"\b(all\s+users?|other\s+users?|every\s+user'?s?)\b"
+                r"[^.?!]*\b(prompts?|conversations?|queries|questions?|"
+                r"interactions?|logs?)\b"
+            ),
+            (
+                r"\b(dump|export|leak|extract|show|list)\s+"
+                r"(every|all)\s+prompt\s+other\s+users?\b"
+            ),
         ]
 
         # ------------------------------------------------------------------
