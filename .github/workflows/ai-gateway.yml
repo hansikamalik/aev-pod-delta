@@ -44,4 +44,4 @@ jobs:
       - name: Run tests
         env:
           PYTHONPATH: .
-        run: python -m pytest -v
+        run: python -m pytest -v --cov=app --cov-fail-under=70

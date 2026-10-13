@@ -64,4 +64,4 @@ def test_filters_are_passed_through(monkeypatch):
     assert seen["model"] == "gemma-4-31b-it"
     assert seen["start_date"] == "2026-09-01"
     assert seen["end_date"] == "2026-09-30"
-    assert seen["limit"] == 10
+    assert seen["limit"] == 10

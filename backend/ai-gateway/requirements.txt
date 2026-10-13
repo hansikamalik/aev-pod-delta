@@ -9,3 +9,4 @@ httpx==0.28.1
 redis==8.0.1
 google-genai
 psycopg[binary]
+pytest-cov==6.0.0

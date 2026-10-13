@@ -138,4 +138,3 @@ def test_rate_limiter_runs_before_input_validation(monkeypatch):
     assert response.status_code == 400
     assert called["rate_limit"] is True
 
-
