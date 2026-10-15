@@ -1,3 +1,4 @@
+
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -22,12 +23,15 @@ fi
 
 echo "Checking Vault status at $VAULT_ADDR..."
 
-if ! STATUS_JSON=$(vault status -format=json 2>/dev/null); then
+STATUS_RC=0
+STATUS_JSON=$(vault status -format=json 2>/dev/null) || STATUS_RC=$?
+
+if [ "$STATUS_RC" -ne 0 ] && [ "$STATUS_RC" -ne 2 ]; then
     echo "Error: Could not retrieve Vault status. Check connectivity and permissions."
     exit 1
 fi
 
-IS_SEALED=$(printf '%s' "$STATUS_JSON" | jq -r '.sealed // empty')
+IS_SEALED=$(printf '%s' "$STATUS_JSON" | jq -r '.sealed')
 
 if [ "$IS_SEALED" = "false" ]; then
     echo "Vault is already unsealed."
@@ -59,7 +63,7 @@ while IFS= read -r KEY; do
     fi
     unset KEY
 
-    SEALED_STATUS=$(printf '%s' "$UNSEAL_RESPONSE" | jq -r '.sealed // empty')
+    SEALED_STATUS=$(printf '%s' "$UNSEAL_RESPONSE" | jq -r '.sealed')
 
     if [ "$SEALED_STATUS" = "false" ]; then
         echo "Successfully unsealed Vault!"
