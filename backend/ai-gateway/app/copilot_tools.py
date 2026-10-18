@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from app.tools import register_tool
 from app import report_generate   # noqa: F401
+from app.audit_log import query_interactions
 
 
 _WORKFLOWS: Dict[str, Dict[str, Any]] = {
@@ -53,29 +54,6 @@ _POLICY_RULES: Dict[str, Dict[str, Any]] = {
     },
 }
 
-_MOCK_AUDIT_EVENTS: List[Dict[str, Any]] = [
-    {
-        "resource": "firewall",
-        "actor": "hansika",
-        "action": "update",
-        "details": "Firewall rule updated",
-        "days_ago": 2,
-    },
-    {
-        "resource": "storage_bucket",
-        "actor": "analyst01",
-        "action": "policy_check",
-        "details": "Storage bucket policy checked",
-        "days_ago": 5,
-    },
-    {
-        "resource": "database",
-        "actor": "admin01",
-        "action": "read",
-        "details": "Database audit event",
-        "days_ago": 9,
-    },
-]
 
 _MOCK_INTEGRATIONS: List[Dict[str, Any]] = [
     {"name": "Microsoft Defender", "status": "connected"},
@@ -233,39 +211,51 @@ def audit_query(
     since_days: int = 7,
     limit: int = 50,
 ) -> Dict[str, Any]:
-    """Query mock audit events using optional filters."""
+    """Query the real ai_interactions audit log.
+
+    actor -> user_id column, since_days -> created_at window. The table only
+    records Copilot queries, so resource/action can only match
+    "ai_interaction" / "copilot_query"; anything else returns no entries.
+    """
     if not isinstance(since_days, int) or not 1 <= since_days <= 90:
         raise ValueError("since_days must be an integer between 1 and 90")
 
     if not isinstance(limit, int) or not 1 <= limit <= 200:
         raise ValueError("limit must be an integer between 1 and 200")
 
-    now = datetime.now(timezone.utc)
     entries: List[Dict[str, Any]] = []
 
-    for event in _MOCK_AUDIT_EVENTS:
-        if event["days_ago"] > since_days:
-            continue
-        if resource is not None and event["resource"] != resource:
-            continue
-        if actor is not None and event["actor"] != actor:
-            continue
-        if action is not None and event["action"] != action:
-            continue
+    if resource in (None, "ai_interaction") and action in (None, "copilot_query"):
+        start = datetime.now(timezone.utc) - timedelta(days=since_days)
+        try:
+            rows = query_interactions(
+                user_id=actor,
+                start_date=start.isoformat(),
+                limit=limit,
+            )
+        except Exception as exc:
+            # Never return fake audit data, and never leak DB details.
+            raise RuntimeError("Audit log is currently unavailable") from exc
 
-        entries.append(
-            {
-                "resource": event["resource"],
-                "actor": event["actor"],
-                "action": event["action"],
-                "details": event["details"],
-                "timestamp": (
-                    now - timedelta(days=event["days_ago"])
-                ).isoformat(),
-            }
-        )
-
-    entries = entries[:limit]
+        for row in rows:
+            created = row.get("created_at")
+            entries.append(
+                {
+                    "resource": "ai_interaction",
+                    "actor": row.get("user_id"),
+                    "action": "copilot_query",
+                    "details": (
+                        f"model={row.get('model')} "
+                        f"tokens={row.get('total_tokens')} "
+                        f"cost={row.get('cost')}"
+                    ),
+                    "timestamp": (
+                        created.isoformat()
+                        if hasattr(created, "isoformat")
+                        else str(created)
+                    ),
+                }
+            )
 
     return {
         "count": len(entries),

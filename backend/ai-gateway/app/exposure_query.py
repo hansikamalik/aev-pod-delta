@@ -8,27 +8,28 @@ severity filters. The local exposure list contains demo data.
 
 from typing import Any, Dict, List, Optional
 
+from app.mock_data import get_asset_name
 from app.tools import register_tool
 
 
 EXPOSURES: List[Dict[str, Any]] = [
     {
         "asset_id": "asset-001",
-        "asset_name": "AI Gateway",
+        "asset_name": get_asset_name("asset-001"),
         "exposure": "internal",
         "risk_level": "medium",
         "status": "active",
     },
     {
         "asset_id": "asset-002",
-        "asset_name": "Redis",
+        "asset_name": get_asset_name("asset-002"),
         "exposure": "internal",
         "risk_level": "low",
         "status": "active",
     },
     {
         "asset_id": "asset-003",
-        "asset_name": "PostgreSQL",
+        "asset_name": get_asset_name("asset-003"),
         "exposure": "restricted",
         "risk_level": "high",
         "status": "active",

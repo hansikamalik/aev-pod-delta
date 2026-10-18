@@ -137,7 +137,7 @@ class CostTracker:
         - model: model identifier
         - prompt_tokens: number of prompt tokens
         - completion_tokens: number of completion tokens
-        - budget_cap: optional per-request cap or override
+        - budget_cap: optional per-request cap
         - org_id: organization identifier for running spend and per-org cap
         - thresholds: alert percentage levels, default (0.8, 1.0)
         """
@@ -190,9 +190,9 @@ class CostTracker:
             new_spend = round(prior_spend + total_cost, 6)
             cls._org_spend[clean_org] = new_spend
 
-            effective_org_cap = (
-                budget_cap if budget_cap is not None else cls.get_org_budget_cap(clean_org)
-            )
+            # Org alerts always use the org's configured cap. The per-request
+            # budget_cap (X-Budget-Cap header) must never override it.
+            effective_org_cap = cls.get_org_budget_cap(clean_org)
 
             result["org_id"] = clean_org
             result["running_spend"] = new_spend

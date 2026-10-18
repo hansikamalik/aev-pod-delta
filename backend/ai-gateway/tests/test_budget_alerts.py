@@ -175,3 +175,46 @@ def test_org_mapping_and_cap_passing_in_query():
             assert data["cost"]["org_id"] == "acme-corp"
             assert data["cost"]["budget_cap"] == 50.0
             assert data["cost"]["running_spend"] > 0
+
+
+def test_header_budget_cap_cannot_override_org_cap():
+    """A huge X-Budget-Cap must not stop the org's 80% and 100% alerts."""
+    fake_pricing = {"fake-model": {"input": 1.0, "output": 0.0}}
+    CostTracker.set_org_budget_cap("org-guard", 10.0)
+    alerts = []
+    CostTracker.register_notification_hook(alerts.append)
+
+    with patch.dict(CostTracker.MODEL_PRICING, fake_pricing, clear=False):
+        r = CostTracker.calculate_cost(
+            model="fake-model",
+            prompt_tokens=12000,            # $12 against a $10 org cap
+            completion_tokens=0,
+            budget_cap=1_000_000.0,         # huge cap sent by the caller
+            org_id="org-guard",
+        )
+
+    assert r["org_budget_cap"] == 10.0
+    assert r["org_budget_exceeded"] is True
+    assert [a["threshold_percent"] for a in alerts] == [80, 100]
+
+
+def test_tiny_header_cap_does_not_trigger_org_alerts():
+    """A tiny X-Budget-Cap only affects that request, not org alerts."""
+    fake_pricing = {"fake-model": {"input": 1.0, "output": 0.0}}
+    CostTracker.set_org_budget_cap("org-quiet", 1000.0)
+    alerts = []
+    CostTracker.register_notification_hook(alerts.append)
+
+    with patch.dict(CostTracker.MODEL_PRICING, fake_pricing, clear=False):
+        r = CostTracker.calculate_cost(
+            model="fake-model",
+            prompt_tokens=1000,             # $1 against a $1000 org cap
+            completion_tokens=0,
+            budget_cap=0.01,
+            org_id="org-quiet",
+        )
+
+    assert r["budget_exceeded"] is True        # per-request cap still works
+    assert r["org_budget_cap"] == 1000.0
+    assert r["org_budget_exceeded"] is False
+    assert alerts == []
