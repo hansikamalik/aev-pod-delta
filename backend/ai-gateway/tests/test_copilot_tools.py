@@ -131,4 +131,4 @@ def test_viewer_can_list_integrations_but_not_query_audit_or_run_workflows():
 
 def test_auditor_can_query_audit_but_not_run_workflows(monkeypatch):
     monkeypatch.setattr("app.copilot_tools.query_interactions", lambda **k: [])
-    assert call("audit_query", {}, role="auditor")["ok"] is True
+    assert call("workflow_assist", {"action": "list"}, role="auditor")["ok"] is False
