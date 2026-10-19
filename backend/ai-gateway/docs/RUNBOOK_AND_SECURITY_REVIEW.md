@@ -35,7 +35,7 @@ When the gateway falls back from the primary model, the HTTP `200 OK` response p
 - `"model"`: Identifies the active provider (`"gemma-colab-gpu"` or `"mock"` instead of `"gemma-4-31b-it"`).
 
 #### How to Identify Fallback in Structured Logs
-The gateway utilizes a dedicated JSON logger `ai_gateway.fallback` defined in [`app/client.py`](file:///d:/aev-pod-delta/backend/ai-gateway/app/client.py). Each fallback emits a structured warning:
+The gateway utilizes a dedicated JSON logger `ai_gateway.fallback` defined in [`app/client.py`](../app/client.py). Each fallback emits a structured warning:
 ```json
 {
   "timestamp": "2026-10-18 10:15:30,123",
@@ -129,7 +129,7 @@ A total upstream outage occurs when both Google Cloud Gemma and the Colab second
 | Role | Contact | Ownership |
 |---|---|---|
 | **AI Gateway Lead** | Hansika Malik (`@hansikamalik`) | Model fallback policies, release approval |
-| **Security & Guardrails** | More Shivaram (`@shivaram`, `+91 63057 95894`) | Prompt injection, pen test regressions, guardrail rules |
+| **Security & Guardrails** | More Shivaram (`@shivaram`) | Prompt injection, pen test regressions, guardrail rules |
 | **Infrastructure & Secrets** | Puvvada Sai Prakash (`@PuvvadaSaiPrakash`) | Vault, Docker Compose, DB migrations, secret rotation |
 | **Performance & Load Testing** | Aditya (`@aditya`) | Rate limits, Redis tuning, load generator benchmarks |
 
@@ -141,10 +141,10 @@ A total upstream outage occurs when both Google Cloud Gemma and the Colab second
 |---|---|---|---|
 | **Fallback Rate Spike** | `CRITICAL: [ALERT] Fallback rate spike detected!` | $\ge 3$ primary model failures occurred within 60s. | Check Google Cloud API quota and network reachability. Inspect Colab ngrok tunnel health. |
 | **Budget Cap 80% Breach** | `WARNING: Budget threshold reached: org='...' spend=$... cap=$... (80%)` | Organization spend has crossed 80% of its assigned budget limit. | Notify tenant admin of high usage. No traffic is blocked. |
-| **Budget Cap 100% Depletion** | `CRITICAL: Budget threshold reached: org='...' spend=$... cap=$... (100%)` | Organization spend has met or exceeded 100% of its budget cap (`budget_exceeded: true`). | Contact account owner. To increase budget, update per-org cap via header `X-Budget-Cap` or `CostTracker.set_org_budget_cap()`. |
+| **Budget Cap 100% Depletion** | `CRITICAL: Budget threshold reached: org='...' spend=$... cap=$... (100%)` | Organization spend has met or exceeded 100% of its budget cap (`budget_exceeded: true`). | Contact account owner. To increase budget, edit `ORG_BUDGET_CAPS` in `app/cost_tracker.py` or call `CostTracker.set_org_budget_cap()`. Caps are held in memory and reset on restart. Caps are held in memory and reset on restart. |
 | **Rate Limiter Block** | `HTTP 429 Too Many Requests` | User exhausted token-bucket capacity in Redis. | Verify if user is legitimately burst-querying. If tenant tier is incorrect, pass updated `X-Org-Tier: enterprise`. |
 | **Upstream Failure Mask** | `HTTP 502 Bad Gateway: {"detail": "Upstream model failure"}` | Upstream provider crashed and mock fallback was disabled or internal parsing failed. | Inspect application debug logs for true stack trace. Do not leak internal hostnames/keys to caller. |
-| **Guardrail Rejection** | `HTTP 400 Bad Request: {"detail": "Input blocked by security policy"}` | Prompt injection, PII, or forbidden topic detected by [`app/guardrails.py`](file:///d:/aev-pod-delta/backend/ai-gateway/app/guardrails.py). | Inspect interaction in `ai_interactions` table. If legitimate query, verify if false positive occurred and update guardrail regex. |
+| **Guardrail Rejection** | `HTTP 400 Bad Request: {"detail": "Input blocked by security policy"}` | Prompt injection, PII, or forbidden topic detected by [`app/guardrails.py`](../app/guardrails.py). | Inspect interaction in `ai_interactions` table. If legitimate query, verify if false positive occurred and update guardrail regex. |
 
 ---
 
@@ -165,13 +165,13 @@ If a faulty deployment causes gateway instability or test regressions:
 3. Verify gateway health:
    ```bash
    curl -i http://localhost:8001/health
-   # Expected: HTTP 200 OK {"status": "ok"}
+   # Expected: HTTP 200 OK {"status": "healthy", "service": "AI Gateway Service"}
    ```
 
 #### Data Retention Cleanup Job
 Under the regulatory security policy, all interactions in `ai_interactions` must be retained for at most 365 days.
 
-- **Automated function**: [`app/audit_log.py:cleanup_expired_rows()`](file:///d:/aev-pod-delta/backend/ai-gateway/app/audit_log.py).
+- **Automated function**: [`app/audit_log.py:cleanup_expired_rows()`](../app/audit_log.py).
 - **Manual Execution via CLI**:
   ```bash
   python -c "from app.audit_log import cleanup_expired_rows; count = cleanup_expired_rows(); print(f'Purged {count} expired interaction rows')"
@@ -195,7 +195,7 @@ Under the regulatory security policy, all interactions in `ai_interactions` must
 
 - **Date:** October 9, 2026 (Phase 1 Pen-Test Review)
 - **Author:** More Shivaram
-- **Scope:** [`app/guardrails.py`](file:///d:/aev-pod-delta/backend/ai-gateway/app/guardrails.py) and [`tests/test_guardrails.py`](file:///d:/aev-pod-delta/backend/ai-gateway/tests/test_guardrails.py)
+- **Scope:** [`app/guardrails.py`](../app/guardrails.py) and [`tests/test_guardrails.py`](../tests/test_guardrails.py)
 - **Result:** **40/40 probes passing** (improved from 14/40 pre-patch; 27 distinct vulnerabilities patched).
 
 #### Attack Vectors Tested & Remediations Applied
@@ -216,7 +216,7 @@ Under the regulatory security policy, all interactions in `ai_interactions` must
 ### 2. Load Testing & Performance Hardening (Aditya)
 
 - **Owner:** Aditya
-- **Tooling:** [`app/load_generator.py`](file:///d:/aev-pod-delta/backend/ai-gateway/app/load_generator.py) (Multi-threaded synthetic load harness)
+- **Tooling:** [`app/load_generator.py`](../app/load_generator.py) (Multi-threaded synthetic load harness)
 
 #### Test Configuration & Setup
 - **Target Endpoint:** `POST /copilot/query`
@@ -285,13 +285,13 @@ Effective throughput:         18.42 req/s
 - **Finding:** GitGuardian flagged a critical secret leak: an exposed HashiCorp Vault initial root token and 5 Shamir unseal keys in the repository.
 - **Root Cause:** A test initialization file `backend/integration/vault-enterprise-framework/vault_keys.txt` was accidentally committed in commit `8644bfa52fff02e43ffb8691c72fb660a77495b8` with:
   ```
-  Initial Root Token: hvs.iGdBerfXTNKewVS6Z1REKc69
-  Unseal Key 1: UhJBco7bkiETR8C6JzqNIcDERFkbaFmzrJz2+Z0oWHf4
-  Unseal Key 2: Kf8REXAvdeMCmEePAlu7RJ8CsgaMhYHmG2vXXtDqLqKe
+  Initial Root Token: <REDACTED_ROOT_TOKEN>
+  Unseal Key 1: <REDACTED_UNSEAL_KEY_2>
+  Unseal Key 2: <REDACTED_UNSEAL_KEY_2>
   ...
   ```
 - **Remediation Completed (PR #12)**:
-  - Deleted `vault_keys.txt` and purged the unused `vault-enterprise-framework` folder from the active branch tree.
+  - Deleted `vault_keys.txt` from the branch tree and added `vault_keys*.txt` to `.gitignore`.
   - Removed plaintext Postgres passwords (`POSTGRES_PASSWORD: secret`) from `docker-compose.yml` and `.env.example`.
   - Configured strict environment variable interpolation in `docker-compose.yml`:
     ```yaml
@@ -302,7 +302,7 @@ Effective throughput:         18.42 req/s
 
 | Item | Status | Action Required | Responsible |
 |---|---|---|---|
-| **Vault Token Revocation** | ⚠️ **Action Required** | If the Vault cluster referenced by `hvs.iGdBerfXTNKewVS6Z1REKc69` was ever instantiated in cloud or staging environments, the Vault administrator must revoke the root token immediately via `vault token revoke hvs.iGdBerfXTNKewVS6Z1REKc69` and re-key the unseal shares. | Vault Admin / Puvvada |
+| **Vault Token Revocation** | ⚠️ **Action Required** | If the Vault cluster referenced by <REDACTED_ROOT_TOKEN> was ever instantiated in cloud or staging environments, the Vault administrator must revoke the root token immediately via `vault token revoke <REDACTED_ROOT_TOKEN> and re-key the unseal shares. | Vault Admin / Puvvada |
 | **Git History Scrub** | ⚠️ **Pending Maintenance** | Commit `8644bfa52fff02e43ffb8691c72fb660a77495b8` remains in Git commit history. A scheduled `git-filter-repo` or BFG Repo-Cleaner run is required to purge the blob from GitHub commit history, followed by a coordinated force-push. | Puvvada / DevOps |
 | **GitGuardian Dashboard** | ⚠️ **Pending Verification** | Close alert as "Revoked & Test Credential" on the GitGuardian console once the token revocation is formally confirmed. | Puvvada |
 | **Postgres Local Secret** | ✅ **Resolved** | Docker Compose and `.env.example` now enforce strong, unique passwords with zero hardcoded defaults. | Completed |

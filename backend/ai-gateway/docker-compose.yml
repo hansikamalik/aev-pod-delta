@@ -30,6 +30,8 @@ services:
       COLAB_GEMMA_URL: ${COLAB_GEMMA_URL:-}
       REDIS_URL: redis://redis:6379
       DATABASE_URL: postgresql://${POSTGRES_USER:-aev}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aevdb}
+      AI_CONTEXT_URL: ${AI_CONTEXT_URL:-}
+      AI_CONTEXT_TIMEOUT: ${AI_CONTEXT_TIMEOUT:-3}
     depends_on:
       - postgres
       - redis
