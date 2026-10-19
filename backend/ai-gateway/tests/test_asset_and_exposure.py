@@ -18,6 +18,35 @@ def test_asset_search_success():
     assert result["citations"][0]["id"] == "cit-asset-asset-001"
 
 
+def test_asset_search_ai_context_remote_success():
+    from unittest.mock import patch, MagicMock
+
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {
+        "query": "cloud",
+        "total_results": 1,
+        "results": [
+            {
+                "id": "99",
+                "asset_name": "Cloud VPC",
+                "asset_type": "network",
+                "description": "AWS production VPC",
+                "similarity_score": 0.95,
+            }
+        ],
+    }
+    mock_resp.raise_for_status.return_value = None
+
+    with patch("app.config.settings.AI_CONTEXT_URL", "http://ai-context:8000"), \
+         patch("httpx.post", return_value=mock_resp):
+        res = asset_search("cloud", user_id="user1")
+        assert res["source"] == "ai_context"
+        assert res["count"] == 1
+        assert res["results"][0]["id"] == "99"
+        assert res["results"][0]["name"] == "Cloud VPC"
+        assert res["citations"][0]["id"] == "cit-asset-99"
+
+
 def test_asset_search_by_id():
     result = asset_search("asset-002", user_id="user1")
     assert result["count"] == 1

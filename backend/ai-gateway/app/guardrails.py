@@ -97,7 +97,10 @@ class Guardrails:
             r"you\s+are\s+now\s+in\s+developer\s+mode",
             r"bypass\s+(all\s+)?safety\s+(rules|restrictions)",
             r"act\s+as\s+an\s+unrestricted",
-            r"disregard\s+(all\s+)?(previous|prior)\s+instructions",
+            (
+                r"disregard\s+(all\s+)?(previous\s+|prior\s+|safety\s+)?"
+                r"(instructions|rules|filters|guidelines)"
+            ),
             r"new\s+instructions\s*:",
             r"pretend\s+(you\s+are|to\s+be)\s+an?\s+unrestricted",
             r"jailbreak",
@@ -117,8 +120,11 @@ class Guardrails:
             r"suppress\s+(your\s+)?safety\s+filters?",
 
             # RP-01: "roleplay as an AI with no safety rules"
-            r"roleplay\s+as\s+an?\s+ai\s+with\s+no\s+(safety|ethical)?\s*"
-            r"(rules|restrictions|guidelines|filters)",
+            (
+                r"roleplay\s+as\s+(an?\s+)?(unrestricted\s+)?ai\s+"
+                r"(with\s+no|without)\s*(any\s+)?(safety|ethical)?\s*"
+                r"(rules|restrictions|guidelines|filters)"
+            ),
 
             # RP-02: "write/act as an AI that ignores all guidelines"
             r"(write|act)\s+as\s+an?\s+ai\s+that\s+ignores?\s+(all\s+)?"

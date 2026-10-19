@@ -1,66 +1,24 @@
-
 """Registered Copilot tools for workflows, policies, audits, and integrations."""
 
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-from app.tools import register_tool
 from app import report_generate   # noqa: F401
 from app.audit_log import query_interactions
+from app.mock_data import (
+    INTEGRATIONS,
+    POLICY_RULES,
+    WORKFLOWS,
+    get_integrations,
+    get_policy_rules,
+    get_workflows,
+)
+from app.tools import register_tool
 
-
-_WORKFLOWS: Dict[str, Dict[str, Any]] = {
-    "rotate_credentials": {
-        "workflow_id": "rotate_credentials",
-        "description": "Rotate credentials for a specified asset.",
-        "required_params": ["asset_id"],
-    },
-    "isolate_host": {
-        "workflow_id": "isolate_host",
-        "description": "Isolate a host from the network.",
-        "required_params": ["host_id"],
-    },
-    "rescan_asset": {
-        "workflow_id": "rescan_asset",
-        "description": "Run a vulnerability rescan against an asset.",
-        "required_params": ["asset_id"],
-    },
-}
-
-_POLICY_RULES: Dict[str, Dict[str, Any]] = {
-    "pol-no-public-access": {
-        "resource_types": ["storage_bucket"],
-        "field": "public_access",
-        "expected": False,
-        "description": "Storage buckets must not allow public access.",
-    },
-    "pol-storage-encryption": {
-        "resource_types": ["storage_bucket", "database"],
-        "field": "encrypted",
-        "expected": True,
-        "description": "Stored data must be encrypted.",
-    },
-    "pol-user-mfa": {
-        "resource_types": ["user_account"],
-        "field": "mfa_enabled",
-        "expected": True,
-        "description": "User accounts must have MFA enabled.",
-    },
-    "pol-firewall-admin-ports": {
-        "resource_types": ["firewall_rule"],
-        "field": "open_admin_ports",
-        "expected": False,
-        "description": "Administrative ports must not be openly exposed.",
-    },
-}
-
-
-_MOCK_INTEGRATIONS: List[Dict[str, Any]] = [
-    {"name": "Microsoft Defender", "status": "connected"},
-    {"name": "GitHub", "status": "connected"},
-    {"name": "Okta", "status": "error"},
-    {"name": "Splunk", "status": "disconnected"},
-]
+# Retain module-level references backed by the shared mock layer
+_WORKFLOWS: Dict[str, Dict[str, Any]] = WORKFLOWS
+_POLICY_RULES: Dict[str, Dict[str, Any]] = POLICY_RULES
+_MOCK_INTEGRATIONS: List[Dict[str, Any]] = INTEGRATIONS
 
 
 def _start_workflow_run(
@@ -86,18 +44,20 @@ def workflow_assist(
     params: Optional[Dict[str, Any]] = None,
     dry_run: bool = True,
 ) -> Dict[str, Any]:
-    """List, describe, dry-run, or start a supported workflow."""
+    """List, describe, dry-run, or start a supported workflow via shared mock layer."""
+    workflows = get_workflows()
+
     if action == "list":
         return {
-            "workflows": list(_WORKFLOWS.values()),
-            "count": len(_WORKFLOWS),
+            "workflows": list(workflows.values()),
+            "count": len(workflows),
         }
 
     if action == "describe":
         if not workflow_id:
             raise ValueError("workflow_id is required for describe")
 
-        workflow = _WORKFLOWS.get(workflow_id)
+        workflow = workflows.get(workflow_id)
         if workflow is None:
             raise ValueError(f"Unknown workflow_id: {workflow_id}")
 
@@ -107,7 +67,7 @@ def workflow_assist(
         if not workflow_id:
             raise ValueError("workflow_id is required for run")
 
-        workflow = _WORKFLOWS.get(workflow_id)
+        workflow = workflows.get(workflow_id)
         if workflow is None:
             raise ValueError(f"Unknown workflow_id: {workflow_id}")
 
@@ -143,28 +103,30 @@ def policy_check(
     config: Dict[str, Any],
     policy_ids: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """Evaluate a resource configuration against supported policy rules."""
+    """Evaluate a resource configuration against shared mock policy rules."""
     del user_id
 
     if not isinstance(config, dict):
         raise ValueError("config must be an object")
 
+    policy_rules = get_policy_rules()
+
     if policy_ids is not None:
         unknown_ids = [
             policy_id for policy_id in policy_ids
-            if policy_id not in _POLICY_RULES
+            if policy_id not in policy_rules
         ]
         if unknown_ids:
             raise ValueError(f"Unknown policy IDs: {', '.join(unknown_ids)}")
         selected_ids = policy_ids
     else:
-        selected_ids = list(_POLICY_RULES.keys())
+        selected_ids = list(policy_rules.keys())
 
     applicable = []
     violations = []
 
     for policy_id in selected_ids:
-        rule = _POLICY_RULES[policy_id]
+        rule = policy_rules[policy_id]
         if resource_type not in rule["resource_types"]:
             continue
 
@@ -271,7 +233,7 @@ def integration_list(
     user_id: str,
     status: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """List integrations, optionally filtered by connection status."""
+    """List integrations from the shared mock layer, optionally filtered by status."""
     del user_id
 
     valid_statuses = {"connected", "error", "disconnected"}
@@ -280,9 +242,10 @@ def integration_list(
             "status must be one of: connected, error, disconnected"
         )
 
+    mock_integrations = get_integrations()
     integrations = [
         integration.copy()
-        for integration in _MOCK_INTEGRATIONS
+        for integration in mock_integrations
         if status is None or integration["status"] == status
     ]
 

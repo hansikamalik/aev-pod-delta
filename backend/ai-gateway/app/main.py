@@ -19,6 +19,7 @@ from app.audit_log import (  # noqa: F401
     update_fact_check,
 )
 
+from app.citations import router as citations_router, ensure_response_citation
 from app.client import ask_gpt
 from app.config import settings
 from app.cost_tracker import CostTracker
@@ -35,6 +36,8 @@ app = FastAPI(
     description="AI Gateway Backend for AEV Platform",
     version=getattr(settings, "VERSION", "2.0"),
 )
+
+app.include_router(citations_router)
 
 fallback_metrics = {
     "total_requests": 0,
@@ -267,6 +270,9 @@ def query(
     redacted_answer = guardrails.redact_pii(raw_answer)
     output_was_redacted = redacted_answer != raw_answer
     safe_answer = guardrails.process_output(redacted_answer)
+
+    # Ensure every response carries at least one verified citation
+    citations = ensure_response_citation(citations, sanitized_question, safe_answer)
 
     interaction_id = log_interaction(
         user_id=x_user_id,

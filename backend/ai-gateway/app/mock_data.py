@@ -1,8 +1,8 @@
-"""Single source of truth for demo/mock asset data.
+"""Single source of truth for demo/mock data (shared mock layer).
 
-asset_search, exposure_query and risk_score_get all read from here so an
-asset ID always means the same thing. When Pod Beta's real APIs arrive,
-replace this module with real lookups.
+asset_search, exposure_query, risk_score_get, workflow_assist, policy_check,
+audit_query and integration_list all read from here.
+When real APIs arrive, replace this module with real lookups.
 """
 
 from typing import Any, Dict, List, Optional
@@ -47,6 +47,82 @@ RISK_FACTORS: Dict[str, Dict[str, int]] = {
     },
 }
 
+WORKFLOWS: Dict[str, Dict[str, Any]] = {
+    "rotate_credentials": {
+        "workflow_id": "rotate_credentials",
+        "description": "Rotate credentials for a specified asset.",
+        "required_params": ["asset_id"],
+    },
+    "isolate_host": {
+        "workflow_id": "isolate_host",
+        "description": "Isolate a host from the network.",
+        "required_params": ["host_id"],
+    },
+    "rescan_asset": {
+        "workflow_id": "rescan_asset",
+        "description": "Run a vulnerability rescan against an asset.",
+        "required_params": ["asset_id"],
+    },
+}
+
+POLICY_RULES: Dict[str, Dict[str, Any]] = {
+    "pol-no-public-access": {
+        "resource_types": ["storage_bucket"],
+        "field": "public_access",
+        "expected": False,
+        "description": "Storage buckets must not allow public access.",
+    },
+    "pol-storage-encryption": {
+        "resource_types": ["storage_bucket", "database"],
+        "field": "encrypted",
+        "expected": True,
+        "description": "Stored data must be encrypted.",
+    },
+    "pol-user-mfa": {
+        "resource_types": ["user_account"],
+        "field": "mfa_enabled",
+        "expected": True,
+        "description": "User accounts must have MFA enabled.",
+    },
+    "pol-firewall-admin-ports": {
+        "resource_types": ["firewall_rule"],
+        "field": "open_admin_ports",
+        "expected": False,
+        "description": "Administrative ports must not be openly exposed.",
+    },
+}
+
+INTEGRATIONS: List[Dict[str, Any]] = [
+    {"name": "Microsoft Defender", "status": "connected"},
+    {"name": "GitHub", "status": "connected"},
+    {"name": "Okta", "status": "error"},
+    {"name": "Splunk", "status": "disconnected"},
+]
+
+MOCK_AUDIT_EVENTS: List[Dict[str, Any]] = [
+    {
+        "resource": "firewall",
+        "actor": "hansika",
+        "action": "update",
+        "details": "Firewall rule updated",
+        "days_ago": 2,
+    },
+    {
+        "resource": "storage_bucket",
+        "actor": "analyst01",
+        "action": "policy_check",
+        "details": "Storage bucket policy checked",
+        "days_ago": 5,
+    },
+    {
+        "resource": "database",
+        "actor": "admin01",
+        "action": "read",
+        "details": "Database audit event",
+        "days_ago": 9,
+    },
+]
+
 
 def get_asset(asset_id: str) -> Optional[Dict[str, Any]]:
     """Return a copy of the asset with this ID, or None."""
@@ -60,3 +136,23 @@ def get_asset_name(asset_id: str) -> str:
     """Return the asset's name, or the ID itself if unknown."""
     asset = get_asset(asset_id)
     return asset["name"] if asset else asset_id
+
+
+def get_workflows() -> Dict[str, Dict[str, Any]]:
+    """Return workflows from the shared mock layer."""
+    return {k: dict(v) for k, v in WORKFLOWS.items()}
+
+
+def get_policy_rules() -> Dict[str, Dict[str, Any]]:
+    """Return policy rules from the shared mock layer."""
+    return {k: dict(v) for k, v in POLICY_RULES.items()}
+
+
+def get_integrations() -> List[Dict[str, Any]]:
+    """Return integrations from the shared mock layer."""
+    return [dict(i) for i in INTEGRATIONS]
+
+
+def get_mock_audit_events() -> List[Dict[str, Any]]:
+    """Return mock audit events from the shared mock layer."""
+    return [dict(e) for e in MOCK_AUDIT_EVENTS]
