@@ -1,24 +1,17 @@
+
 """Registered Copilot tools for workflows, policies, audits, and integrations."""
 
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-from app import report_generate   # noqa: F401
+from app import report_generate  # noqa: F401
 from app.audit_log import query_interactions
 from app.mock_data import (
-    INTEGRATIONS,
-    POLICY_RULES,
     WORKFLOWS,
     get_integrations,
     get_policy_rules,
-    get_workflows,
 )
 from app.tools import register_tool
-
-# Retain module-level references backed by the shared mock layer
-_WORKFLOWS: Dict[str, Dict[str, Any]] = WORKFLOWS
-_POLICY_RULES: Dict[str, Dict[str, Any]] = POLICY_RULES
-_MOCK_INTEGRATIONS: List[Dict[str, Any]] = INTEGRATIONS
 
 
 def _start_workflow_run(
@@ -44,20 +37,18 @@ def workflow_assist(
     params: Optional[Dict[str, Any]] = None,
     dry_run: bool = True,
 ) -> Dict[str, Any]:
-    """List, describe, dry-run, or start a supported workflow via shared mock layer."""
-    workflows = get_workflows()
-
+    """List, describe, dry-run, or start a supported workflow."""
     if action == "list":
         return {
-            "workflows": list(workflows.values()),
-            "count": len(workflows),
+            "workflows": list(WORKFLOWS.values()),
+            "count": len(WORKFLOWS),
         }
 
     if action == "describe":
         if not workflow_id:
             raise ValueError("workflow_id is required for describe")
 
-        workflow = workflows.get(workflow_id)
+        workflow = WORKFLOWS.get(workflow_id)
         if workflow is None:
             raise ValueError(f"Unknown workflow_id: {workflow_id}")
 
@@ -67,7 +58,7 @@ def workflow_assist(
         if not workflow_id:
             raise ValueError("workflow_id is required for run")
 
-        workflow = workflows.get(workflow_id)
+        workflow = WORKFLOWS.get(workflow_id)
         if workflow is None:
             raise ValueError(f"Unknown workflow_id: {workflow_id}")
 
@@ -113,7 +104,8 @@ def policy_check(
 
     if policy_ids is not None:
         unknown_ids = [
-            policy_id for policy_id in policy_ids
+            policy_id
+            for policy_id in policy_ids
             if policy_id not in policy_rules
         ]
         if unknown_ids:
@@ -173,12 +165,7 @@ def audit_query(
     since_days: int = 7,
     limit: int = 50,
 ) -> Dict[str, Any]:
-    """Query the real ai_interactions audit log.
-
-    actor -> user_id column, since_days -> created_at window. The table only
-    records Copilot queries, so resource/action can only match
-    "ai_interaction" / "copilot_query"; anything else returns no entries.
-    """
+    """Query the real ai_interactions audit log using optional filters."""
     if not isinstance(since_days, int) or not 1 <= since_days <= 90:
         raise ValueError("since_days must be an integer between 1 and 90")
 
@@ -187,8 +174,12 @@ def audit_query(
 
     entries: List[Dict[str, Any]] = []
 
-    if resource in (None, "ai_interaction") and action in (None, "copilot_query"):
+    if resource in (None, "ai_interaction") and action in (
+        None,
+        "copilot_query",
+    ):
         start = datetime.now(timezone.utc) - timedelta(days=since_days)
+
         try:
             rows = query_interactions(
                 user_id=actor,
@@ -196,7 +187,6 @@ def audit_query(
                 limit=limit,
             )
         except Exception as exc:
-            # Never return fake audit data, and never leak DB details.
             raise RuntimeError("Audit log is currently unavailable") from exc
 
         for row in rows:
@@ -233,7 +223,7 @@ def integration_list(
     user_id: str,
     status: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """List integrations from the shared mock layer, optionally filtered by status."""
+    """List shared mock integrations, optionally filtered by status."""
     del user_id
 
     valid_statuses = {"connected", "error", "disconnected"}

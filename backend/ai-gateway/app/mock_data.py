@@ -1,3 +1,4 @@
+
 """Single source of truth for demo/mock data (shared mock layer).
 
 asset_search, exposure_query, risk_score_get, workflow_assist, policy_check,
@@ -6,6 +7,7 @@ When real APIs arrive, replace this module with real lookups.
 """
 
 from typing import Any, Dict, List, Optional
+
 
 ASSETS: List[Dict[str, Any]] = [
     {
@@ -31,19 +33,30 @@ ASSETS: List[Dict[str, Any]] = [
     },
 ]
 
-# Risk factors (0-100 each) per asset ID, used by risk_score_get.
 RISK_FACTORS: Dict[str, Dict[str, int]] = {
     "asset-001": {
-        "criticality": 95, "threat_intel": 80, "severity": 90,
-        "age": 70, "business_impact": 90, "likelihood": 75,
+        "criticality": 95,
+        "threat_intel": 80,
+        "severity": 90,
+        "age": 70,
+        "business_impact": 90,
+        "likelihood": 75,
     },
     "asset-002": {
-        "criticality": 40, "threat_intel": 30, "severity": 35,
-        "age": 50, "business_impact": 30, "likelihood": 25,
+        "criticality": 40,
+        "threat_intel": 30,
+        "severity": 35,
+        "age": 50,
+        "business_impact": 30,
+        "likelihood": 25,
     },
     "asset-003": {
-        "criticality": 85, "threat_intel": 60, "severity": 70,
-        "age": 55, "business_impact": 80, "likelihood": 50,
+        "criticality": 85,
+        "threat_intel": 60,
+        "severity": 70,
+        "age": 55,
+        "business_impact": 80,
+        "likelihood": 50,
     },
 }
 
@@ -140,19 +153,19 @@ def get_asset_name(asset_id: str) -> str:
 
 def get_workflows() -> Dict[str, Dict[str, Any]]:
     """Return workflows from the shared mock layer."""
-    return {k: dict(v) for k, v in WORKFLOWS.items()}
+    return {key: dict(value) for key, value in WORKFLOWS.items()}
 
 
 def get_policy_rules() -> Dict[str, Dict[str, Any]]:
     """Return policy rules from the shared mock layer."""
-    return {k: dict(v) for k, v in POLICY_RULES.items()}
+    return {key: dict(value) for key, value in POLICY_RULES.items()}
 
 
 def get_integrations() -> List[Dict[str, Any]]:
     """Return integrations from the shared mock layer."""
-    return [dict(i) for i in INTEGRATIONS]
+    return [dict(integration) for integration in INTEGRATIONS]
 
 
 def get_mock_audit_events() -> List[Dict[str, Any]]:
     """Return mock audit events from the shared mock layer."""
-    return [dict(e) for e in MOCK_AUDIT_EVENTS]
+    return [dict(event) for event in MOCK_AUDIT_EVENTS]

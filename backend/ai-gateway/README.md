@@ -175,6 +175,15 @@ ai-gateway/
 └── requirements.txt
 ```
 
+
+## Copilot Tools
+
+| Tool | Data Source |
+|---|---|
+| `workflow_assist` | Shared mock data (`app/mock_data.py`) |
+| `integration_list` | Shared mock data (`app/mock_data.py`) |
+
+
 ---
 
 ## Local Development & Testing
