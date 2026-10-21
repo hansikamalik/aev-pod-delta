@@ -114,10 +114,11 @@ The gateway exposes 8 specialized tools. Every tool call is checked against the 
 
 ## Rate Limiting & Cost Management
 
-- **Rate limits:** enforced per user, based on org tier.
-- **Budget caps and alerts:** 80% and 100% alerts fire when an org reaches those thresholds (alerts currently only go to the log). The org cap comes from `ORG_BUDGET_CAPS` in `app/cost_tracker.py`.
-- **Spend tracking:** held entirely in memory, so it resets when the application restarts.
-- **Pricing:** all models are currently priced at `0.0`.
+- **Rate limits:** enforced per user, based on org tier (`free`, `pro`, `enterprise`).
+- **Budget caps and alerts:** 80% and 100% alerts fire when an org reaches those thresholds. The org cap comes from `ORG_BUDGET_CAPS` in `app/cost_tracker.py` or can be adjusted via `CostTracker.set_org_budget_cap()`.
+- **Model pricing (D1):** all models (`gemma-4-31b-it`, `gemma-4-26b-a4b-it`, `gemma-colab-gpu`) are currently priced at `0.0` (free tier). In real use spend remains `$0.00`; tests use synthetic pricing to validate threshold crossings. When transitioning to paid LLM providers, configure actual per-1k token rates in `MODEL_PRICING` in `app/cost_tracker.py`.
+- **In-memory spend tracking (D2):** spend is currently accumulated in-memory (`CostTracker._org_spend`), which resets upon application restarts. For production persistence across container reboots, spend will be computed directly from `ai_interactions` (which stores per-row `cost`) grouped by organization ID (planned post-go-live migration to add `org_id` column).
+- **Alert destinations (D3):** budget alerts and fallback rate-spike alerts currently emit structured logs only (`WARNING` / `CRITICAL` via Python loggers). Post-go-live alerting will support dispatching webhook notifications to external notification targets (e.g. Slack, PagerDuty) via an optional `ALERT_WEBHOOK_URL` environment configuration.
 
 ---
 
