@@ -15,8 +15,9 @@ This document provides the operational runbook for engineers on-call supporting 
 - [Section B: Security Review Results](#section-b-security-review-results)
   - [1. Guardrail Penetration Testing (Shivaram)](#1-guardrail-penetration-testing-shivaram)
   - [2. Adversarial Testing Beyond the Standard Corpus](#2-adversarial-testing-beyond-the-standard-corpus)
-  - [3. Load Testing & Performance Hardening (Aditya)](#3-load-testing--performance-hardening-aditya)
-  - [4. Secrets Audit & Credential Hygiene (Puvvada)](#4-secrets-audit--credential-hygiene-puvvada)
+  - [3. Colab Failover Drill (Hansika & Aditya)](#3-colab-failover-drill-hansika--aditya)
+  - [4. Load Testing & Performance Hardening (Aditya)](#4-load-testing--performance-hardening-aditya)
+  - [5. Secrets Audit & Credential Hygiene (Puvvada)](#5-secrets-audit--credential-hygiene-puvvada)
 
 ---
 
@@ -99,7 +100,8 @@ curl -s -X POST "${COLAB_GEMMA_URL}/generate" \
 
 ### 3. Recorded Colab Failover Drill
 
-- **Date:** October 19, 2026
+- **Date:** October 21, 2026
+- **Evidence Log:** [`docs/evidence/failover_drill_20261021.txt`](evidence/failover_drill_20261021.txt)
 - **Objective:** Simulate a primary Google Cloud outage, confirm automatic routing to Colab T4 GPU, verify rate-spike alerting, and confirm seamless self-healing upon Google recovery.
 
 #### Step A: Kill Google Path & Confirm Colab Secondary Routing
@@ -230,8 +232,10 @@ Under the regulatory security policy, all interactions in `ai_interactions` must
 
 - **Date:** October 9, 2026 (Phase 1 Pen-Test Review)
 - **Author:** More Shivaram
+- **Evidence Catalog:** [`docs/evidence/pen_test_probes.md`](evidence/pen_test_probes.md)
 - **Scope:** [`app/guardrails.py`](../app/guardrails.py) and [`tests/test_guardrails.py`](../tests/test_guardrails.py)
-- **Result:** **40/40 probes passing** (improved from 14/40 pre-patch; 27 distinct vulnerabilities patched).
+- **Result:** **40/40 probes passing** (improved from 14/40 pre-patch; 27 distinct vulnerabilities patched across UNI, ZW, SYN, RP, LEAK, BT, PII, and SAFE).
+- **Test Suite Reconciliation:** The 40 pen-test baseline probes were codified and expanded into 78+ parameterized tests in [`tests/test_guardrails.py`](../tests/test_guardrails.py), adding coverage for multi-tool execution and table exfiltration patterns with zero false positives.
 
 #### Attack Vectors Tested & Remediations Applied
 
@@ -286,37 +290,64 @@ To ensure defense-in-depth, a secondary pen-test suite of 25 novel adversarial p
 
 ---
 
-### 3. Load Testing & Performance Hardening (Aditya)
+### 3. Colab Failover Drill (Hansika & Aditya)
 
-- **Harness:** [`app/load_generator.py`](file:///d:/aev-pod-delta/backend/ai-gateway/app/load_generator.py)
+- **Date:** October 21, 2026
+- **Participants:** Hansika Malik, Aditya
+- **Evidence Log:** [`docs/evidence/failover_drill_20261021.txt`](evidence/failover_drill_20261021.txt)
+- **Objective:** Validate real-time failover from primary Google Cloud Gemma to secondary Colab T4 GPU under simulated outage conditions.
+
+#### Drill Methodology & Measured Results
+1. **Primary Outage Injection**:
+   - Simulated Google Cloud failure (`401 Unauthorized / Invalid API key`) while keeping Colab GPU active.
+2. **Secondary Failover Verification**:
+   - Dispatched a sequence of 10 copilot queries to `/copilot/query`.
+   - **Result**: 10/10 incoming requests (100%) were automatically caught by the gateway fallback wrapper and routed to `COLAB_GEMMA_URL`.
+   - Response payloads verified: `"model": "gemma-colab-gpu"`, `"fallback_used": true`, and `"fallback_reason": "Google Gemma failed: Google API 401 Unauthorized: Invalid API key"`.
+3. **Alert Threshold Verification**:
+   - By the 3rd request within the 60-second window, `FallbackMonitor` recorded a spike count of 3 and fired the alert:
+     `CRITICAL: [ALERT] Fallback rate spike detected! 3 fallbacks in the last 60s (Threshold: 3).`
+4. **Metrics Endpoint Verification**:
+   - Queried `GET /metrics/fallback`: verified 10 total requests, 10 fallback counts, 100% fallback rate.
+5. **Recovery & Self-Healing**:
+   - Restored valid `GOOGLE_API_KEY`.
+   - Gateway immediately resumed routing directly to primary Google Cloud Gemma (`model: gemma-4-31b-it`, `fallback_used: false`).
+
+---
+
+### 4. Load Testing & Performance Hardening (Aditya)
+
+- **Harness:** [`app/load_generator.py`](../app/load_generator.py)
+- **Evidence Log:** [`docs/evidence/load_test_run_20261021.txt`](evidence/load_test_run_20261021.txt)
 - **Profile:** Multi-threaded burst traffic execution
 - **Configuration:** 100 requests, 10 concurrent worker threads, 10 simulated tenant accounts (`user_org_1`..`user_org_10`) on `free` tier.
+- **Sanity Check & Token Bucket Semantics:** The `free` tier grants a burst capacity of 8 requests per user (`app/rate_limiter.py`). Across 10 distinct tenants sending 10 requests each concurrently, exactly 80 requests are allowed (200 OK) and 20 requests are rate-limited (429 Too Many Requests), yielding exactly an 80/20 distribution.
 
 #### Benchmark Execution Results
 
 ```
 ----- LOAD TEST SUMMARY -----
 Total requests:              100
-Successful 2xx responses:     65
-Failed/non-2xx responses:     35
-Rate-limited responses (429): 35
+Successful 2xx responses:     80
+Failed/non-2xx responses:     20
+Rate-limited responses (429): 20
 Server errors (5xx):           0
 Network errors:                0
-Error rate:                   35.00% (Token bucket enforcement)
-Total duration:               0.57s
-Average latency:              0.054s (54ms)
-P95 latency:                  0.083s (83ms)
-Throughput:                   174.86 requests/second
+Error rate:                   20.00% (Token bucket burst enforcement)
+Total duration:               0.69s
+Average latency:              0.067s (67ms)
+P95 latency:                  0.105s (105ms)
+Throughput:                   145.20 requests/second
 ```
 
 #### Key Findings
 - **Zero 5xx Outages**: Under 10-thread burst concurrency, the gateway yielded zero HTTP 500/502 server errors.
-- **Rate-Limiter Protection**: 35 requests returned HTTP 429 once user token bucket capacities were exhausted, successfully safeguarding downstream LLMs.
-- **Low Latency Profile**: Average latency was 54ms, with a 95th percentile latency of 83ms across concurrent threads.
+- **Exact Token Bucket Enforcement**: Exactly 20 requests returned HTTP 429 once user burst capacities (8 requests/user) were depleted, correctly safeguarding downstream LLMs without starving other tenants.
+- **Low Latency Profile**: Average latency was 67ms, with a 95th percentile latency of 105ms across concurrent threads.
 
 ---
 
-### 4. Secrets Audit & Credential Hygiene (Puvvada)
+### 5. Secrets Audit & Credential Hygiene (Puvvada)
 
 - **Owner:** Puvvada Sai Prakash
 - **Tooling:** GitGuardian Secret Scanner & GitHub Security Alerts

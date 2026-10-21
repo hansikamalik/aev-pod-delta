@@ -1,0 +1,113 @@
+2026-10-21 17:07:57,148 [INFO] Starting load test: requests=100, concurrency=10, users=10, target=http://127.0.0.1:8012/copilot/query
+2026-10-21 17:07:57,229 [INFO] Request #3 | user=user_org_3 | status=200 | latency=0.078s
+2026-10-21 17:07:57,231 [INFO] Request #1 | user=user_org_1 | status=200 | latency=0.081s
+2026-10-21 17:07:57,241 [INFO] Request #6 | user=user_org_6 | status=200 | latency=0.089s
+2026-10-21 17:07:57,242 [INFO] Request #8 | user=user_org_8 | status=200 | latency=0.089s
+2026-10-21 17:07:57,243 [INFO] Request #7 | user=user_org_7 | status=200 | latency=0.092s
+2026-10-21 17:07:57,250 [INFO] Request #2 | user=user_org_2 | status=200 | latency=0.100s
+2026-10-21 17:07:57,250 [INFO] Request #9 | user=user_org_9 | status=200 | latency=0.098s
+2026-10-21 17:07:57,252 [INFO] Request #10 | user=user_org_10 | status=200 | latency=0.098s
+2026-10-21 17:07:57,252 [INFO] Request #5 | user=user_org_5 | status=200 | latency=0.101s
+2026-10-21 17:07:57,254 [INFO] Request #4 | user=user_org_4 | status=200 | latency=0.103s
+2026-10-21 17:07:57,301 [INFO] Request #11 | user=user_org_1 | status=200 | latency=0.071s
+2026-10-21 17:07:57,304 [INFO] Request #12 | user=user_org_2 | status=200 | latency=0.072s
+2026-10-21 17:07:57,307 [INFO] Request #14 | user=user_org_4 | status=200 | latency=0.063s
+2026-10-21 17:07:57,312 [INFO] Request #13 | user=user_org_3 | status=200 | latency=0.070s
+2026-10-21 17:07:57,319 [INFO] Request #15 | user=user_org_5 | status=200 | latency=0.074s
+2026-10-21 17:07:57,320 [INFO] Request #16 | user=user_org_6 | status=200 | latency=0.069s
+2026-10-21 17:07:57,321 [INFO] Request #18 | user=user_org_8 | status=200 | latency=0.068s
+2026-10-21 17:07:57,321 [INFO] Request #19 | user=user_org_9 | status=200 | latency=0.069s
+2026-10-21 17:07:57,324 [INFO] Request #17 | user=user_org_7 | status=200 | latency=0.073s
+2026-10-21 17:07:57,331 [INFO] Request #20 | user=user_org_10 | status=200 | latency=0.074s
+2026-10-21 17:07:57,373 [INFO] Request #22 | user=user_org_2 | status=200 | latency=0.069s
+2026-10-21 17:07:57,378 [INFO] Request #21 | user=user_org_1 | status=200 | latency=0.076s
+2026-10-21 17:07:57,384 [INFO] Request #23 | user=user_org_3 | status=200 | latency=0.074s
+2026-10-21 17:07:57,384 [INFO] Request #27 | user=user_org_7 | status=200 | latency=0.063s
+2026-10-21 17:07:57,384 [INFO] Request #24 | user=user_org_4 | status=200 | latency=0.072s
+2026-10-21 17:07:57,385 [INFO] Request #26 | user=user_org_6 | status=200 | latency=0.065s
+2026-10-21 17:07:57,394 [INFO] Request #30 | user=user_org_10 | status=200 | latency=0.063s
+2026-10-21 17:07:57,394 [INFO] Request #28 | user=user_org_8 | status=200 | latency=0.070s
+2026-10-21 17:07:57,395 [INFO] Request #29 | user=user_org_9 | status=200 | latency=0.070s
+2026-10-21 17:07:57,396 [INFO] Request #25 | user=user_org_5 | status=200 | latency=0.076s
+2026-10-21 17:07:57,441 [INFO] Request #31 | user=user_org_1 | status=200 | latency=0.065s
+2026-10-21 17:07:57,443 [INFO] Request #32 | user=user_org_2 | status=200 | latency=0.065s
+2026-10-21 17:07:57,448 [INFO] Request #34 | user=user_org_4 | status=200 | latency=0.062s
+2026-10-21 17:07:57,454 [INFO] Request #33 | user=user_org_3 | status=200 | latency=0.069s
+2026-10-21 17:07:57,455 [INFO] Request #35 | user=user_org_5 | status=200 | latency=0.067s
+2026-10-21 17:07:57,455 [INFO] Request #37 | user=user_org_7 | status=200 | latency=0.060s
+2026-10-21 17:07:57,456 [INFO] Request #36 | user=user_org_6 | status=200 | latency=0.066s
+2026-10-21 17:07:57,457 [INFO] Request #38 | user=user_org_8 | status=200 | latency=0.062s
+2026-10-21 17:07:57,458 [INFO] Request #40 | user=user_org_10 | status=200 | latency=0.061s
+2026-10-21 17:07:57,458 [INFO] Request #39 | user=user_org_9 | status=200 | latency=0.062s
+2026-10-21 17:07:57,508 [INFO] Request #41 | user=user_org_1 | status=200 | latency=0.066s
+2026-10-21 17:07:57,514 [INFO] Request #42 | user=user_org_2 | status=200 | latency=0.069s
+2026-10-21 17:07:57,514 [INFO] Request #43 | user=user_org_3 | status=200 | latency=0.066s
+2026-10-21 17:07:57,521 [INFO] Request #45 | user=user_org_5 | status=200 | latency=0.065s
+2026-10-21 17:07:57,522 [INFO] Request #46 | user=user_org_6 | status=200 | latency=0.066s
+2026-10-21 17:07:57,522 [INFO] Request #44 | user=user_org_4 | status=200 | latency=0.067s
+2026-10-21 17:07:57,534 [INFO] Request #48 | user=user_org_8 | status=200 | latency=0.076s
+2026-10-21 17:07:57,535 [INFO] Request #49 | user=user_org_9 | status=200 | latency=0.076s
+2026-10-21 17:07:57,535 [INFO] Request #50 | user=user_org_10 | status=200 | latency=0.076s
+2026-10-21 17:07:57,537 [INFO] Request #47 | user=user_org_7 | status=200 | latency=0.080s
+2026-10-21 17:07:57,591 [INFO] Request #51 | user=user_org_1 | status=200 | latency=0.083s
+2026-10-21 17:07:57,600 [INFO] Request #52 | user=user_org_2 | status=200 | latency=0.086s
+2026-10-21 17:07:57,623 [INFO] Request #53 | user=user_org_3 | status=200 | latency=0.108s
+2026-10-21 17:07:57,630 [INFO] Request #54 | user=user_org_4 | status=200 | latency=0.109s
+2026-10-21 17:07:57,637 [INFO] Request #55 | user=user_org_5 | status=200 | latency=0.114s
+2026-10-21 17:07:57,638 [INFO] Request #59 | user=user_org_9 | status=200 | latency=0.099s
+2026-10-21 17:07:57,638 [INFO] Request #57 | user=user_org_7 | status=200 | latency=0.102s
+2026-10-21 17:07:57,647 [INFO] Request #56 | user=user_org_6 | status=200 | latency=0.124s
+2026-10-21 17:07:57,648 [INFO] Request #58 | user=user_org_8 | status=200 | latency=0.110s
+2026-10-21 17:07:57,649 [INFO] Request #60 | user=user_org_10 | status=200 | latency=0.105s
+2026-10-21 17:07:57,665 [INFO] Request #61 | user=user_org_1 | status=200 | latency=0.074s
+2026-10-21 17:07:57,695 [INFO] Request #62 | user=user_org_2 | status=200 | latency=0.093s
+2026-10-21 17:07:57,701 [INFO] Request #63 | user=user_org_3 | status=200 | latency=0.072s
+2026-10-21 17:07:57,701 [INFO] Request #64 | user=user_org_4 | status=200 | latency=0.071s
+2026-10-21 17:07:57,706 [INFO] Request #66 | user=user_org_6 | status=200 | latency=0.068s
+2026-10-21 17:07:57,715 [INFO] Request #70 | user=user_org_10 | status=200 | latency=0.066s
+2026-10-21 17:07:57,720 [INFO] Request #67 | user=user_org_7 | status=200 | latency=0.081s
+2026-10-21 17:07:57,720 [INFO] Request #69 | user=user_org_9 | status=200 | latency=0.072s
+2026-10-21 17:07:57,720 [INFO] Request #68 | user=user_org_8 | status=200 | latency=0.073s
+2026-10-21 17:07:57,722 [INFO] Request #71 | user=user_org_1 | status=200 | latency=0.056s
+2026-10-21 17:07:57,723 [INFO] Request #65 | user=user_org_5 | status=200 | latency=0.086s
+2026-10-21 17:07:57,735 [INFO] Request #81 | user=user_org_1 | status=429 | latency=0.011s
+2026-10-21 17:07:57,737 [INFO] Request #72 | user=user_org_2 | status=200 | latency=0.042s
+2026-10-21 17:07:57,743 [INFO] Request #82 | user=user_org_2 | status=429 | latency=0.007s
+2026-10-21 17:07:57,745 [INFO] Request #83 | user=user_org_3 | status=429 | latency=0.006s
+2026-10-21 17:07:57,749 [INFO] Request #74 | user=user_org_4 | status=200 | latency=0.048s
+2026-10-21 17:07:57,750 [INFO] Request #73 | user=user_org_3 | status=200 | latency=0.049s
+2026-10-21 17:07:57,760 [INFO] Request #84 | user=user_org_4 | status=429 | latency=0.017s
+2026-10-21 17:07:57,763 [INFO] Request #86 | user=user_org_6 | status=429 | latency=0.013s
+2026-10-21 17:07:57,763 [INFO] Request #85 | user=user_org_5 | status=429 | latency=0.018s
+2026-10-21 17:07:57,766 [INFO] Request #87 | user=user_org_7 | status=429 | latency=0.016s
+2026-10-21 17:07:57,783 [INFO] Request #76 | user=user_org_6 | status=200 | latency=0.066s
+2026-10-21 17:07:57,783 [INFO] Request #79 | user=user_org_9 | status=200 | latency=0.062s
+2026-10-21 17:07:57,783 [INFO] Request #77 | user=user_org_7 | status=200 | latency=0.063s
+2026-10-21 17:07:57,785 [INFO] Request #75 | user=user_org_5 | status=200 | latency=0.078s
+2026-10-21 17:07:57,786 [INFO] Request #80 | user=user_org_10 | status=200 | latency=0.064s
+2026-10-21 17:07:57,787 [INFO] Request #78 | user=user_org_8 | status=200 | latency=0.066s
+2026-10-21 17:07:57,805 [INFO] Request #88 | user=user_org_8 | status=429 | latency=0.044s
+2026-10-21 17:07:57,811 [INFO] Request #89 | user=user_org_9 | status=429 | latency=0.048s
+2026-10-21 17:07:57,814 [INFO] Request #90 | user=user_org_10 | status=429 | latency=0.050s
+2026-10-21 17:07:57,819 [INFO] Request #91 | user=user_org_1 | status=429 | latency=0.053s
+2026-10-21 17:07:57,822 [INFO] Request #93 | user=user_org_3 | status=429 | latency=0.038s
+2026-10-21 17:07:57,825 [INFO] Request #92 | user=user_org_2 | status=429 | latency=0.042s
+2026-10-21 17:07:57,827 [INFO] Request #95 | user=user_org_5 | status=429 | latency=0.042s
+2026-10-21 17:07:57,830 [INFO] Request #97 | user=user_org_7 | status=429 | latency=0.038s
+2026-10-21 17:07:57,831 [INFO] Request #94 | user=user_org_4 | status=429 | latency=0.046s
+2026-10-21 17:07:57,833 [INFO] Request #98 | user=user_org_8 | status=429 | latency=0.028s
+2026-10-21 17:07:57,834 [INFO] Request #96 | user=user_org_6 | status=429 | latency=0.043s
+2026-10-21 17:07:57,835 [INFO] Request #99 | user=user_org_9 | status=429 | latency=0.023s
+2026-10-21 17:07:57,836 [INFO] Request #100 | user=user_org_10 | status=429 | latency=0.021s
+2026-10-21 17:07:57,838 [INFO] ----- LOAD TEST SUMMARY -----
+2026-10-21 17:07:57,838 [INFO] Total requests: 100
+2026-10-21 17:07:57,838 [INFO] Successful 2xx responses: 80
+2026-10-21 17:07:57,838 [INFO] Failed/non-2xx responses: 20
+2026-10-21 17:07:57,838 [INFO] Rate-limited responses (429): 20
+2026-10-21 17:07:57,838 [INFO] Server errors (5xx): 0
+2026-10-21 17:07:57,838 [INFO] Network errors: 0
+2026-10-21 17:07:57,838 [INFO] Error rate: 20.00%
+2026-10-21 17:07:57,838 [INFO] Total duration: 0.69s
+2026-10-21 17:07:57,838 [INFO] Average latency: 0.067s
+2026-10-21 17:07:57,838 [INFO] P95 latency: 0.105s
+2026-10-21 17:07:57,839 [INFO] Throughput: 145.20 requests/second

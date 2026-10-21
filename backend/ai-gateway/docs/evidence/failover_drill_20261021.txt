@@ -1,0 +1,72 @@
+================================================================================
+AI GATEWAY - LIVE COLAB FAILOVER DRILL EXECUTION REPORT
+Date: October 21, 2026
+Operators: Hansika Malik, Aditya, More Shivaram
+Target Endpoint: POST /copilot/query & GET /metrics/fallback
+================================================================================
+
+--------------------------------------------------------------------------------
+PHASE 1: SIMULATE PRIMARY GOOGLE OUTAGE & DISPATCH 10 COPILOT QUERIES
+Simulating: Invalid GOOGLE_API_KEY (RuntimeError: Google API 401 Unauthorized)
+--------------------------------------------------------------------------------
+
+Query #01: HTTP 200 OK | model='gemma-colab-gpu' | fallback=True | reason='Google Gemma failed: Google API 401 Unauthorized: Invalid API key'
+Query #02: HTTP 200 OK | model='gemma-colab-gpu' | fallback=True | reason='Google Gemma failed: Google API 401 Unauthorized: Invalid API key'
+Query #03: HTTP 200 OK | model='gemma-colab-gpu' | fallback=True | reason='Google Gemma failed: Google API 401 Unauthorized: Invalid API key'
+Query #04: HTTP 200 OK | model='gemma-colab-gpu' | fallback=True | reason='Google Gemma failed: Google API 401 Unauthorized: Invalid API key'
+Query #05: HTTP 200 OK | model='gemma-colab-gpu' | fallback=True | reason='Google Gemma failed: Google API 401 Unauthorized: Invalid API key'
+Query #06: HTTP 200 OK | model='gemma-colab-gpu' | fallback=True | reason='Google Gemma failed: Google API 401 Unauthorized: Invalid API key'
+Query #07: HTTP 200 OK | model='gemma-colab-gpu' | fallback=True | reason='Google Gemma failed: Google API 401 Unauthorized: Invalid API key'
+Query #08: HTTP 200 OK | model='gemma-colab-gpu' | fallback=True | reason='Google Gemma failed: Google API 401 Unauthorized: Invalid API key'
+Query #09: HTTP 200 OK | model='gemma-colab-gpu' | fallback=True | reason='Google Gemma failed: Google API 401 Unauthorized: Invalid API key'
+Query #10: HTTP 200 OK | model='gemma-colab-gpu' | fallback=True | reason='Google Gemma failed: Google API 401 Unauthorized: Invalid API key'
+
+--------------------------------------------------------------------------------
+PHASE 2: STRUCTURED LOGS & ALERT RATE SPIKE VERIFICATION (ai_gateway.fallback)
+--------------------------------------------------------------------------------
+
+{"timestamp": "2026-10-21 17:08:38,416", "level": "WARNING", "logger": "ai_gateway.fallback", "message": "Fallback triggered: from=google_gemma to=colab_gemma reason='Google API 401 Unauthorized: Invalid API key' count_in_window=1"}
+{"timestamp": "2026-10-21 17:08:40,448", "level": "WARNING", "logger": "ai_gateway.fallback", "message": "Fallback triggered: from=google_gemma to=colab_gemma reason='Google API 401 Unauthorized: Invalid API key' count_in_window=2"}
+{"timestamp": "2026-10-21 17:08:42,489", "level": "WARNING", "logger": "ai_gateway.fallback", "message": "Fallback triggered: from=google_gemma to=colab_gemma reason='Google API 401 Unauthorized: Invalid API key' count_in_window=3"}
+{"timestamp": "2026-10-21 17:08:42,490", "level": "CRITICAL", "logger": "ai_gateway.fallback", "message": "[ALERT] Fallback rate spike detected! 3 fallbacks in the last 60s (Threshold: 3)."}
+{"timestamp": "2026-10-21 17:08:44,516", "level": "WARNING", "logger": "ai_gateway.fallback", "message": "Fallback triggered: from=google_gemma to=colab_gemma reason='Google API 401 Unauthorized: Invalid API key' count_in_window=4"}
+{"timestamp": "2026-10-21 17:08:44,516", "level": "CRITICAL", "logger": "ai_gateway.fallback", "message": "[ALERT] Fallback rate spike detected! 4 fallbacks in the last 60s (Threshold: 3)."}
+{"timestamp": "2026-10-21 17:08:46,560", "level": "WARNING", "logger": "ai_gateway.fallback", "message": "Fallback triggered: from=google_gemma to=colab_gemma reason='Google API 401 Unauthorized: Invalid API key' count_in_window=5"}
+{"timestamp": "2026-10-21 17:08:46,560", "level": "CRITICAL", "logger": "ai_gateway.fallback", "message": "[ALERT] Fallback rate spike detected! 5 fallbacks in the last 60s (Threshold: 3)."}
+{"timestamp": "2026-10-21 17:08:48,603", "level": "WARNING", "logger": "ai_gateway.fallback", "message": "Fallback triggered: from=google_gemma to=colab_gemma reason='Google API 401 Unauthorized: Invalid API key' count_in_window=6"}
+{"timestamp": "2026-10-21 17:08:48,603", "level": "CRITICAL", "logger": "ai_gateway.fallback", "message": "[ALERT] Fallback rate spike detected! 6 fallbacks in the last 60s (Threshold: 3)."}
+{"timestamp": "2026-10-21 17:08:50,635", "level": "WARNING", "logger": "ai_gateway.fallback", "message": "Fallback triggered: from=google_gemma to=colab_gemma reason='Google API 401 Unauthorized: Invalid API key' count_in_window=7"}
+{"timestamp": "2026-10-21 17:08:50,635", "level": "CRITICAL", "logger": "ai_gateway.fallback", "message": "[ALERT] Fallback rate spike detected! 7 fallbacks in the last 60s (Threshold: 3)."}
+{"timestamp": "2026-10-21 17:08:52,647", "level": "WARNING", "logger": "ai_gateway.fallback", "message": "Fallback triggered: from=google_gemma to=colab_gemma reason='Google API 401 Unauthorized: Invalid API key' count_in_window=8"}
+{"timestamp": "2026-10-21 17:08:52,648", "level": "CRITICAL", "logger": "ai_gateway.fallback", "message": "[ALERT] Fallback rate spike detected! 8 fallbacks in the last 60s (Threshold: 3)."}
+{"timestamp": "2026-10-21 17:08:54,663", "level": "WARNING", "logger": "ai_gateway.fallback", "message": "Fallback triggered: from=google_gemma to=colab_gemma reason='Google API 401 Unauthorized: Invalid API key' count_in_window=9"}
+{"timestamp": "2026-10-21 17:08:54,663", "level": "CRITICAL", "logger": "ai_gateway.fallback", "message": "[ALERT] Fallback rate spike detected! 9 fallbacks in the last 60s (Threshold: 3)."}
+{"timestamp": "2026-10-21 17:08:56,705", "level": "WARNING", "logger": "ai_gateway.fallback", "message": "Fallback triggered: from=google_gemma to=colab_gemma reason='Google API 401 Unauthorized: Invalid API key' count_in_window=10"}
+{"timestamp": "2026-10-21 17:08:56,705", "level": "CRITICAL", "logger": "ai_gateway.fallback", "message": "[ALERT] Fallback rate spike detected! 10 fallbacks in the last 60s (Threshold: 3)."}
+
+--------------------------------------------------------------------------------
+PHASE 3: METRICS ENDPOINT VERIFICATION (GET /metrics/fallback)
+--------------------------------------------------------------------------------
+
+{
+  "total_requests": 10,
+  "fallback_count": 10,
+  "fallback_rate": 1.0,
+  "fallback_reasons": {
+    "Google Gemma failed: Google API 401 Unauthorized: Invalid API key": 10
+  }
+}
+
+--------------------------------------------------------------------------------
+PHASE 4: RESTORATION & AUTOMATED SELF-HEALING VERIFICATION
+Simulating: Restored valid GOOGLE_API_KEY
+--------------------------------------------------------------------------------
+
+Recovery Query: HTTP 200 OK | model='gemma-4-31b-it' | fallback=False | reason='None'
+
+================================================================================
+DRILL CONCLUSION: SUCCESSFUL
+10/10 failover queries served by Colab GPU (100% success rate, 0 dropped requests).
+Fallback spike alert successfully triggered on request 3 (Threshold: 3).
+Automated self-healing verified: immediate recovery to Google Cloud Gemma.
+================================================================================
