@@ -1,0 +1,227 @@
+[
+  {
+    "connector": "active_directory_connector",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.787263+00:00"
+  },
+  {
+    "connector": "ae_microsoft_entra_id_connector",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.787406+00:00"
+  },
+  {
+    "connector": "aev_connector_webhook",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.787486+00:00"
+  },
+  {
+    "connector": "azure_auth_module",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.787557+00:00"
+  },
+  {
+    "connector": "azure_connector",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.787930+00:00"
+  },
+  {
+    "connector": "azure_discovery",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.788003+00:00"
+  },
+  {
+    "connector": "azure_normalization_platform_push",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.788126+00:00"
+  },
+  {
+    "connector": "connector_github",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.788198+00:00"
+  },
+  {
+    "connector": "connector_gitlab",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.788264+00:00"
+  },
+  {
+    "connector": "connector_microsoft_sentinel",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.788330+00:00"
+  },
+  {
+    "connector": "connector_sentinelone",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.788395+00:00"
+  },
+  {
+    "connector": "cyberark_auth_module",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.788461+00:00"
+  },
+  {
+    "connector": "cyberark_discovery_integration",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.788527+00:00"
+  },
+  {
+    "connector": "dogfood_sample",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.789020+00:00"
+  },
+  {
+    "connector": "elastic_connector",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.789107+00:00"
+  },
+  {
+    "connector": "google_workspace_auth",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.789175+00:00"
+  },
+  {
+    "connector": "google_workspace_connector",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.789247+00:00"
+  },
+  {
+    "connector": "jira_connector",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.789334+00:00"
+  },
+  {
+    "connector": "microsoft365_connector",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.789411+00:00"
+  },
+  {
+    "connector": "microsoft_defender_connector",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.789487+00:00"
+  },
+  {
+    "connector": "okta_connector",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.789563+00:00"
+  },
+  {
+    "connector": "qradar_connector",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.789643+00:00"
+  },
+  {
+    "connector": "servicenow_connector",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.789724+00:00"
+  },
+  {
+    "connector": "splunk_connector",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.789801+00:00"
+  },
+  {
+    "connector": "vault_enterprise_framework",
+    "health_check": "PASSED",
+    "sync_status": "PASSED",
+    "assets_discovered": 1,
+    "assets_normalized": 1,
+    "assets_ingested": 1,
+    "timestamp": "2026-10-21T12:49:05.789885+00:00"
+  }
+]
