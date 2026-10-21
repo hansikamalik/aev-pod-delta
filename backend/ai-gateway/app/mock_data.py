@@ -1,4 +1,3 @@
-
 """Single source of truth for demo/mock data (shared mock layer).
 
 asset_search, exposure_query, risk_score_get, workflow_assist, policy_check,
