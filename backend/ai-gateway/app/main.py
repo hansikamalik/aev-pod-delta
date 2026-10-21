@@ -19,6 +19,7 @@ from app.audit_log import (  # noqa: F401
     update_fact_check,
 )
 
+from app.citations import router as citations_router, ensure_response_citation
 from app.client import ask_gpt
 from app.config import settings
 from app.cost_tracker import CostTracker
@@ -35,6 +36,8 @@ app = FastAPI(
     description="AI Gateway Backend for AEV Platform",
     version=getattr(settings, "VERSION", "2.0"),
 )
+
+app.include_router(citations_router)
 
 fallback_metrics = {
     "total_requests": 0,
@@ -110,6 +113,8 @@ def query(
     x_user_id: Optional[str] = Header(default="anonymous"),
     x_org_tier: Optional[str] = Header(default="free"),
     x_user_role: Optional[str] = Header(default="anonymous"),
+    x_org_id: Optional[str] = Header(default=None),
+    x_budget_cap: Optional[float] = Header(default=None),
 ):
     """Process a Copilot query with guardrails, tools, and tracking."""
 
@@ -239,10 +244,23 @@ def query(
 
     usage = TokenTracker.extract_usage(result)
 
+    # Map request to organization: prefer X-Org-ID, else extract from user_id
+    # (e.g. user@org or user_org_X) or fallback to org_tier
+    effective_org = x_org_id
+    if not effective_org and x_user_id:
+        if "@" in x_user_id:
+            effective_org = x_user_id.split("@", 1)[1]
+        elif "_" in x_user_id and "org" in x_user_id:
+            effective_org = x_user_id.split("_", 1)[1]
+    if not effective_org:
+        effective_org = x_org_tier or "default"
+
     cost_info = CostTracker.calculate_cost(
         model=result.get("model", "unknown"),
         prompt_tokens=usage["prompt_tokens"],
         completion_tokens=usage["completion_tokens"],
+        budget_cap=x_budget_cap,
+        org_id=effective_org,
     )
 
     raw_answer = result.get("answer", "")
@@ -252,6 +270,9 @@ def query(
     redacted_answer = guardrails.redact_pii(raw_answer)
     output_was_redacted = redacted_answer != raw_answer
     safe_answer = guardrails.process_output(redacted_answer)
+
+    # Ensure every response carries at least one verified citation
+    citations = ensure_response_citation(citations, sanitized_question, safe_answer)
 
     interaction_id = log_interaction(
         user_id=x_user_id,

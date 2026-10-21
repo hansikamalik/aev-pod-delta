@@ -9,6 +9,7 @@ an HTTP call -- the registration, arguments and return shape stay.
 
 from typing import Any, Dict
 
+from app.mock_data import RISK_FACTORS, get_asset_name
 from app.tools import register_tool
 
 # Same 6 factors and weights as Pod Beta's proposal (must sum to 100).
@@ -19,24 +20,6 @@ _WEIGHTS = {
     "age": 10,
     "business_impact": 15,
     "likelihood": 10,
-}
-
-# Each factor is scored 0-100 per asset.
-_MOCK_ASSETS: Dict[str, Dict[str, Any]] = {
-    "asset-001": {
-        "name": "prod-db-01",
-        "factors": {
-            "criticality": 95, "threat_intel": 80, "severity": 90,
-            "age": 70, "business_impact": 90, "likelihood": 75,
-        },
-    },
-    "asset-002": {
-        "name": "hr-laptop-14",
-        "factors": {
-            "criticality": 40, "threat_intel": 30, "severity": 35,
-            "age": 50, "business_impact": 30, "likelihood": 25,
-        },
-    },
 }
 
 
@@ -54,9 +37,10 @@ def _band(score: int) -> str:
 def risk_score_get(asset_id: str, user_id: str) -> Dict[str, Any]:
     """Return a mock risk score, band and per-factor breakdown."""
 
-    asset = _MOCK_ASSETS.get(asset_id)
-    if asset is None:
+    factors = RISK_FACTORS.get(asset_id)
+    if factors is None:
         raise ValueError(f"Asset '{asset_id}' not found")
+    asset = {"name": get_asset_name(asset_id), "factors": factors}
 
     breakdown = {
         name: {

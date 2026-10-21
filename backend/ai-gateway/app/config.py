@@ -10,5 +10,9 @@ class Settings:
 
     DEBUG = os.getenv("DEBUG", "True").lower() == "true"
 
+    # AI Context service (NL asset search). Empty = disabled, use local data.
+    AI_CONTEXT_URL = os.getenv("AI_CONTEXT_URL", "").strip().rstrip("/")
+    AI_CONTEXT_TIMEOUT = float(os.getenv("AI_CONTEXT_TIMEOUT", "3"))
+
 
 settings = Settings()

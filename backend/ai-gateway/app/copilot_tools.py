@@ -1,3 +1,4 @@
+
 """Registered Copilot tools for workflows, policies, audits, and integrations."""
 
 from datetime import datetime, timedelta, timezone
@@ -8,7 +9,6 @@ from app.audit_log import query_interactions
 from app.mock_data import (
     WORKFLOWS,
     get_integrations,
-    get_mock_audit_events,
     get_policy_rules,
 )
 from app.tools import register_tool
@@ -165,7 +165,7 @@ def audit_query(
     since_days: int = 7,
     limit: int = 50,
 ) -> Dict[str, Any]:
-    """Query real Copilot audit logs or shared mock audit events."""
+    """Query the real ai_interactions audit log using optional filters."""
     if not isinstance(since_days, int) or not 1 <= since_days <= 90:
         raise ValueError("since_days must be an integer between 1 and 90")
 
@@ -174,7 +174,6 @@ def audit_query(
 
     entries: List[Dict[str, Any]] = []
 
-    # Use the real audit log for Copilot interactions.
     if resource in (None, "ai_interaction") and action in (
         None,
         "copilot_query",
@@ -209,37 +208,6 @@ def audit_query(
                     ),
                 }
             )
-
-    # Preserve filtering of shared mock events for other resources/actions.
-    if resource not in (None, "ai_interaction") or action not in (
-        None,
-        "copilot_query",
-    ):
-        now = datetime.now(timezone.utc)
-
-        for event in get_mock_audit_events():
-            if event["days_ago"] > since_days:
-                continue
-            if resource is not None and event["resource"] != resource:
-                continue
-            if actor is not None and event["actor"] != actor:
-                continue
-            if action is not None and event["action"] != action:
-                continue
-
-            entries.append(
-                {
-                    "resource": event["resource"],
-                    "actor": event["actor"],
-                    "action": event["action"],
-                    "details": event["details"],
-                    "timestamp": (
-                        now - timedelta(days=event["days_ago"])
-                    ).isoformat(),
-                }
-            )
-
-    entries = entries[:limit]
 
     return {
         "count": len(entries),

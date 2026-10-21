@@ -1,0 +1,20 @@
+[
+  {
+    "bug_id": "UAT-201",
+    "connector": "splunk_connector",
+    "error": "Checkpoint synchronization timeout after 30s during incremental fetch",
+    "affected_connectors_count": 1
+  },
+  {
+    "bug_id": "UAT-202",
+    "connector": "vault-enterprise-framework",
+    "error": "vault_token_abc123 leaked in plain text audit log stream",
+    "affected_connectors_count": 12
+  },
+  {
+    "bug_id": "UAT-203",
+    "connector": "tenable_io",
+    "error": "429 Too Many Requests encountered during vulnerability scan push",
+    "affected_connectors_count": 1
+  }
+]

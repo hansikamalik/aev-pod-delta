@@ -58,12 +58,53 @@ def test_policy_check_unknown_resource_type_rejected():
     assert call("policy_check", {"resource_type": "toaster", "config": {}})["ok"] is False
 
 
-# --- audit_query ---
+# --- audit_query (reads the real ai_interactions table) ---
 
-def test_audit_query_filters_by_resource_and_window():
-    r = call("audit_query", {"resource": "firewall", "since_days": 7})
+def _fake_rows():
+    from datetime import datetime, timezone
+    return [
+        {
+            "id": "i1", "user_id": "hansika", "model": "gemma-4-31b-it",
+            "total_tokens": 42, "cost": 0.0, "citations": [],
+            "fact_check_passed": None,
+            "created_at": datetime(2026, 10, 17, tzinfo=timezone.utc),
+        }
+    ]
+
+
+def test_audit_query_reads_real_log_and_maps_filters(monkeypatch):
+    seen = {}
+
+    def fake_query(**kwargs):
+        seen.update(kwargs)
+        return _fake_rows()
+
+    monkeypatch.setattr("app.copilot_tools.query_interactions", fake_query)
+    r = call("audit_query", {"actor": "hansika", "since_days": 7, "limit": 10})
     assert r["ok"] and r["result"]["count"] == 1
-    assert r["result"]["entries"][0]["actor"] == "hansika"
+    entry = r["result"]["entries"][0]
+    assert entry["actor"] == "hansika" and entry["action"] == "copilot_query"
+    assert seen["user_id"] == "hansika" and seen["limit"] == 10
+    assert seen["start_date"]
+
+
+def test_audit_query_unknown_resource_returns_nothing_and_skips_db(monkeypatch):
+    def boom(**kwargs):
+        raise AssertionError("DB must not be queried")
+
+    monkeypatch.setattr("app.copilot_tools.query_interactions", boom)
+    r = call("audit_query", {"resource": "firewall"})
+    assert r["ok"] and r["result"]["count"] == 0
+
+
+def test_audit_query_db_failure_returns_safe_error(monkeypatch):
+    def broken(**kwargs):
+        raise Exception("connection refused to db-host:5432")
+
+    monkeypatch.setattr("app.copilot_tools.query_interactions", broken)
+    r = call("audit_query", {})
+    assert r["ok"] is False
+    assert r["error"] == "Audit log is currently unavailable"
 
 
 def test_audit_query_rejects_out_of_range_window():
@@ -72,8 +113,6 @@ def test_audit_query_rejects_out_of_range_window():
 
 def test_audit_query_wrong_type_rejected():
     assert call("audit_query", {"since_days": "7"})["ok"] is False
-
-
 # --- integration_list ---
 
 def test_integration_list_and_status_filter():
@@ -90,6 +129,7 @@ def test_viewer_can_list_integrations_but_not_query_audit_or_run_workflows():
     assert "not permitted" in call("workflow_assist", {"action": "list"}, role="viewer")["error"]
 
 
-def test_auditor_can_query_audit_but_not_run_workflows():
+def test_auditor_can_query_audit_but_not_run_workflows(monkeypatch):
+    monkeypatch.setattr("app.copilot_tools.query_interactions", lambda **k: [])
     assert call("audit_query", {}, role="auditor")["ok"] is True
     assert call("workflow_assist", {"action": "list"}, role="auditor")["ok"] is False
