@@ -43,6 +43,16 @@ python -m sandbox.runner --scenario server_error        #             -> exit co
 
 Or open `http://127.0.0.1:8080/api/assets?scenario=unauthorized` in a browser.
 
+## Docker images
+
+Each SDK also builds as a standalone image that runs `SampleConnector` with no setup:
+
+```powershell
+.\verify_docker.ps1          # builds both --no-cache, runs each, checks for a SUCCESS result
+```
+
+See [docs/DOCKER.md](docs/DOCKER.md) for the full structure and what it does and doesn't prove.
+
 ## Layout
 
 ```
@@ -74,6 +84,13 @@ connector-sandbox/
 | [ts/docs/CONNECTOR_GUIDE.md](ts/docs/CONNECTOR_GUIDE.md) | write and test a new TypeScript connector |
 | [docs/SCENARIOS.md](docs/SCENARIOS.md) | see what each scenario does, or add one |
 | [docs/TESTING.md](docs/TESTING.md) | understand the test suites, fixtures and expected behaviour |
+| [docs/DOCKER.md](docs/DOCKER.md) | understand or rebuild the Docker packaging for either SDK |
+| [docs/REGISTRATION_READINESS.md](docs/REGISTRATION_READINESS.md) | build or demo `POST /connectors/custom` before its dependencies are specced |
 | [docs/KNOWN_GAPS.md](docs/KNOWN_GAPS.md) | know what the sandbox does **not** do yet, and open decisions |
 | [docs/STATUS_REPORT.md](docs/STATUS_REPORT.md) | see the dated verification results and checklist scorecard |
 
+## What the sandbox does not do (yet)
+
+It does not validate credentials (a wrong API key is treated like a right one), the TypeScript mock
+server cannot produce failures, and there is no reusable contract suite on the Python side. Full list:
+[docs/KNOWN_GAPS.md](docs/KNOWN_GAPS.md).

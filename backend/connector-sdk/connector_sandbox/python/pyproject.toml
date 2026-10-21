@@ -22,7 +22,7 @@ dev = ["pytest>=8.0"]
 sandbox = "sandbox.runner:main"
 
 [tool.setuptools.packages.find]
-include = ["sandbox*", "mock_server*", "connectors*", "connector_sdk*", "scenarios*"]
+include = ["sandbox*", "mock_server*", "connectors*", "connector_sdk*", "scenarios*", "registration*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
