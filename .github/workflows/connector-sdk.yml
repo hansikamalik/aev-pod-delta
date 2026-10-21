@@ -41,9 +41,14 @@ jobs:
 
       - name: Run tests
         shell: bash
-        env:
-          PYTHONPATH: backend/connector-sdk
         run: |
+          export PYTHONPATH="$GITHUB_WORKSPACE/backend/connector-sdk"
+          echo "PYTHONPATH=$PYTHONPATH"
+          echo "Checking SDK package..."
+          ls -la "$GITHUB_WORKSPACE/backend/connector-sdk/connector_sdk"
+
+          python -c "import connector_sdk; print('connector_sdk import OK:', connector_sdk.__file__)"
+
           if [ -d backend/connector-sdk/tests ]; then
             python -m pytest -v backend/connector-sdk/tests
           else
