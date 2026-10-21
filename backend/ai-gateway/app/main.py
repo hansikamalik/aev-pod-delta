@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from app import asset_search, exposure_query, mock_tools  # noqa: F401
 from app.audit_log import (  # noqa: F401
     cleanup_expired_rows,
+    flag_citation,
     log_interaction,
     query_interactions,
     setup_database,
@@ -60,6 +61,12 @@ class FactCheckRequest(BaseModel):
     interaction_id: str
     fact_check_passed: bool
     details: Optional[str] = None
+
+
+class CitationFlagRequest(BaseModel):
+    interaction_id: str
+    citation_id: str
+    reason: str
 
 
 def _add_citations(target: List[Any], source: Any) -> None:
@@ -359,6 +366,25 @@ def fact_check_hook(payload: FactCheckRequest):
     return {
         "status": "success",
         "message": "Fact check result recorded",
+    }
+
+
+@app.post("/copilot/citations/flag")
+def flag_citation_endpoint(
+    payload: CitationFlagRequest,
+    x_user_id: Optional[str] = Header(default="anonymous"),
+):
+    """Record a user flag marking a citation as inaccurate."""
+    flag_citation(
+        interaction_id=payload.interaction_id,
+        citation_id=payload.citation_id,
+        reason=payload.reason,
+        flagged_by=x_user_id or "anonymous",
+    )
+
+    return {
+        "status": "success",
+        "message": "Citation flag recorded",
     }
 
 

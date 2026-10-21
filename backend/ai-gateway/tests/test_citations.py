@@ -1,6 +1,6 @@
 """Tests for citations router and citation verification utilities."""
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 
 from app.citations import (
@@ -107,3 +107,34 @@ def test_query_always_carries_citation():
         assert len(data["citations"]) >= 1
         assert any(c.get("type") in {"kb_article", "document", "reference", "asset"}
                    for c in data["citations"])
+
+
+def test_flag_citation_endpoint_success():
+    mock_conn = MagicMock()
+    with patch("app.audit_log._get_connection", return_value=mock_conn):
+        response = client.post(
+            "/copilot/citations/flag",
+            headers={"X-User-ID": "analyst-1"},
+            json={
+                "interaction_id": "int-123",
+                "citation_id": "cit-policy-1",
+                "reason": "This policy rule does not apply to database.",
+            },
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert mock_conn.__enter__.return_value.execute.called
+        assert mock_conn.__enter__.return_value.commit.called
+
+
+def test_flag_citation_endpoint_missing_fields_returns_422():
+    response = client.post(
+        "/copilot/citations/flag",
+        headers={"X-User-ID": "analyst-1"},
+        json={
+            "interaction_id": "int-123",
+        },
+    )
+    assert response.status_code == 422
+

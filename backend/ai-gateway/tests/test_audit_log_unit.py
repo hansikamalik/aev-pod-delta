@@ -44,6 +44,17 @@ def test_update_fact_check():
         assert mock_conn.__enter__.return_value.commit.called
 
 
+def test_flag_citation():
+    from app.audit_log import flag_citation
+
+    mock_conn = MagicMock()
+    with patch("app.audit_log._get_connection", return_value=mock_conn):
+        flag_citation("interact-1", "cit-1", "Inaccurate source", "user-1")
+        assert mock_conn.__enter__.return_value.execute.called
+        assert mock_conn.__enter__.return_value.commit.called
+
+
+
 def test_cleanup_expired_rows():
     mock_conn = MagicMock()
     mock_cur = MagicMock()

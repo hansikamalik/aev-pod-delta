@@ -61,6 +61,7 @@ The AI Gateway Service is the core backend component of the AEV Platform. It is 
 | POST | `/copilot/query` | Processes a question with guardrails, tools, citations, and tracking. |
 | POST | `/citations/` | Matches reference documents against text and returns verified citations. |
 | GET | `/copilot/audit-log` | Fetches audit log rows. Query filters: `user_id`, `model`, `start_date`, `end_date`, `limit` (default 50). Admin and auditor roles only. |
+| POST | `/copilot/citations/flag` | Flags a citation as inaccurate with reason and user identity. |
 | POST | `/webhooks/fact-check` | Records a fact-check result sent by AI Context for an interaction. |
 | POST | `/admin/retention-cleanup` | Starts the expired audit log cleanup job in the background. |
 | GET | `/metrics/fallback` | Fallback counts, fallback rate, and reason breakdown. |

@@ -58,6 +58,25 @@ def update_fact_check(interaction_id: str, passed: bool, details: str = None):
         conn.commit()
 
 
+def flag_citation(
+    interaction_id: str,
+    citation_id: str,
+    reason: str,
+    flagged_by: str = "anonymous",
+) -> None:
+    """Record a user flag marking a citation as inaccurate."""
+    with _get_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO citation_flags
+                (interaction_id, citation_id, reason, flagged_by)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (interaction_id, citation_id, reason, flagged_by),
+        )
+        conn.commit()
+
+
 def cleanup_expired_rows():
     """1-year retention policy cleanup job for expired rows."""
     one_year_ago = datetime.now(timezone.utc) - timedelta(days=365)
