@@ -1,8 +1,7 @@
 """Single source of truth for demo/mock data (shared mock layer).
 
-asset_search, exposure_query, risk_score_get, workflow_assist, policy_check,
-audit_query and integration_list all read from here.
-When real APIs arrive, replace this module with real lookups.
+asset_search, exposure_query, risk_score_get, workflow_assist and integration_list
+all read from here. When real APIs arrive, replace this module with real lookups.
 """
 
 from typing import Any, Dict, List, Optional

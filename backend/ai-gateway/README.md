@@ -87,10 +87,10 @@ The gateway exposes 8 specialized tools. Every tool call is checked against the 
 | `exposure_query` | Queries vulnerability and exposure data. | Shared mock layer (`app/mock_data.py`) |
 | `risk_score_get` | Retrieves current risk scores for assets. | Shared mock layer (`app/mock_data.py`) |
 | `report_generate` | Generates summaries of security and audit reports. | Shared mock layer |
-| `workflow_assist` | Assists with automated workflow steps. | Shared mock layer (`app/mock_data.py`) |
-| `policy_check` | Validates compliance against organizational policies. | Shared mock layer (`app/mock_data.py`) |
+| `workflow_assist` | Assists with automated workflow steps. | Shared mock data (`app/mock_data.py`) |
+| `policy_check` | Validates compliance against organizational policies. | Security policy rules (`app/copilot_tools.py`) |
 | `audit_query` | Queries historical audit events. | Real `ai_interactions` audit table |
-| `integration_list` | Lists active third-party integrations. | Shared mock layer (`app/mock_data.py`) |
+| `integration_list` | Lists active third-party integrations. | Shared mock data (`app/mock_data.py`) |
 
 ---
 

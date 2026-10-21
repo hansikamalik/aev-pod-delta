@@ -5,20 +5,35 @@ from typing import Any, Dict, List, Optional
 
 from app import report_generate   # noqa: F401
 from app.audit_log import query_interactions
-from app.mock_data import (
-    INTEGRATIONS,
-    POLICY_RULES,
-    WORKFLOWS,
-    get_integrations,
-    get_policy_rules,
-    get_workflows,
-)
+from app.mock_data import INTEGRATIONS, WORKFLOWS
 from app.tools import register_tool
 
-# Retain module-level references backed by the shared mock layer
-_WORKFLOWS: Dict[str, Dict[str, Any]] = WORKFLOWS
-_POLICY_RULES: Dict[str, Dict[str, Any]] = POLICY_RULES
-_MOCK_INTEGRATIONS: List[Dict[str, Any]] = INTEGRATIONS
+_POLICY_RULES: Dict[str, Dict[str, Any]] = {
+    "pol-no-public-access": {
+        "resource_types": ["storage_bucket"],
+        "field": "public_access",
+        "expected": False,
+        "description": "Storage buckets must not allow public access.",
+    },
+    "pol-storage-encryption": {
+        "resource_types": ["storage_bucket", "database"],
+        "field": "encrypted",
+        "expected": True,
+        "description": "Stored data must be encrypted.",
+    },
+    "pol-user-mfa": {
+        "resource_types": ["user_account"],
+        "field": "mfa_enabled",
+        "expected": True,
+        "description": "User accounts must have MFA enabled.",
+    },
+    "pol-firewall-admin-ports": {
+        "resource_types": ["firewall_rule"],
+        "field": "open_admin_ports",
+        "expected": False,
+        "description": "Administrative ports must not be openly exposed.",
+    },
+}
 
 
 def _start_workflow_run(
@@ -44,20 +59,18 @@ def workflow_assist(
     params: Optional[Dict[str, Any]] = None,
     dry_run: bool = True,
 ) -> Dict[str, Any]:
-    """List, describe, dry-run, or start a supported workflow via shared mock layer."""
-    workflows = get_workflows()
-
+    """List, describe, dry-run, or start a supported workflow."""
     if action == "list":
         return {
-            "workflows": list(workflows.values()),
-            "count": len(workflows),
+            "workflows": list(WORKFLOWS.values()),
+            "count": len(WORKFLOWS),
         }
 
     if action == "describe":
         if not workflow_id:
             raise ValueError("workflow_id is required for describe")
 
-        workflow = workflows.get(workflow_id)
+        workflow = WORKFLOWS.get(workflow_id)
         if workflow is None:
             raise ValueError(f"Unknown workflow_id: {workflow_id}")
 
@@ -67,7 +80,7 @@ def workflow_assist(
         if not workflow_id:
             raise ValueError("workflow_id is required for run")
 
-        workflow = workflows.get(workflow_id)
+        workflow = WORKFLOWS.get(workflow_id)
         if workflow is None:
             raise ValueError(f"Unknown workflow_id: {workflow_id}")
 
@@ -109,7 +122,7 @@ def policy_check(
     if not isinstance(config, dict):
         raise ValueError("config must be an object")
 
-    policy_rules = get_policy_rules()
+    policy_rules = _POLICY_RULES
 
     if policy_ids is not None:
         unknown_ids = [
@@ -242,10 +255,9 @@ def integration_list(
             "status must be one of: connected, error, disconnected"
         )
 
-    mock_integrations = get_integrations()
     integrations = [
         integration.copy()
-        for integration in mock_integrations
+        for integration in INTEGRATIONS
         if status is None or integration["status"] == status
     ]
 
