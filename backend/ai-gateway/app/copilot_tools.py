@@ -6,25 +6,8 @@ from typing import Any, Dict, List, Optional
 
 from app.tools import register_tool
 from app import report_generate   # noqa: F401
+from app.mock_data import INTEGRATIONS, WORKFLOWS
 
-
-_WORKFLOWS: Dict[str, Dict[str, Any]] = {
-    "rotate_credentials": {
-        "workflow_id": "rotate_credentials",
-        "description": "Rotate credentials for a specified asset.",
-        "required_params": ["asset_id"],
-    },
-    "isolate_host": {
-        "workflow_id": "isolate_host",
-        "description": "Isolate a host from the network.",
-        "required_params": ["host_id"],
-    },
-    "rescan_asset": {
-        "workflow_id": "rescan_asset",
-        "description": "Run a vulnerability rescan against an asset.",
-        "required_params": ["asset_id"],
-    },
-}
 
 _POLICY_RULES: Dict[str, Dict[str, Any]] = {
     "pol-no-public-access": {
@@ -77,13 +60,6 @@ _MOCK_AUDIT_EVENTS: List[Dict[str, Any]] = [
     },
 ]
 
-_MOCK_INTEGRATIONS: List[Dict[str, Any]] = [
-    {"name": "Microsoft Defender", "status": "connected"},
-    {"name": "GitHub", "status": "connected"},
-    {"name": "Okta", "status": "error"},
-    {"name": "Splunk", "status": "disconnected"},
-]
-
 
 def _start_workflow_run(
     workflow_id: str,
@@ -111,15 +87,15 @@ def workflow_assist(
     """List, describe, dry-run, or start a supported workflow."""
     if action == "list":
         return {
-            "workflows": list(_WORKFLOWS.values()),
-            "count": len(_WORKFLOWS),
+            "workflows": list(WORKFLOWS.values()),
+            "count": len(WORKFLOWS),
         }
 
     if action == "describe":
         if not workflow_id:
             raise ValueError("workflow_id is required for describe")
 
-        workflow = _WORKFLOWS.get(workflow_id)
+        workflow = WORKFLOWS.get(workflow_id)
         if workflow is None:
             raise ValueError(f"Unknown workflow_id: {workflow_id}")
 
@@ -129,7 +105,7 @@ def workflow_assist(
         if not workflow_id:
             raise ValueError("workflow_id is required for run")
 
-        workflow = _WORKFLOWS.get(workflow_id)
+        workflow = WORKFLOWS.get(workflow_id)
         if workflow is None:
             raise ValueError(f"Unknown workflow_id: {workflow_id}")
 
@@ -292,7 +268,7 @@ def integration_list(
 
     integrations = [
         integration.copy()
-        for integration in _MOCK_INTEGRATIONS
+        for integration in INTEGRATIONS
         if status is None or integration["status"] == status
     ]
 
