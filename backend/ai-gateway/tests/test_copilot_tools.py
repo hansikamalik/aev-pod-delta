@@ -133,3 +133,21 @@ def test_auditor_can_query_audit_but_not_run_workflows(monkeypatch):
     monkeypatch.setattr("app.copilot_tools.query_interactions", lambda **k: [])
     assert call("audit_query", {}, role="auditor")["ok"] is True
     assert call("workflow_assist", {"action": "list"}, role="auditor")["ok"] is False
+
+
+def test_policy_check_returns_policy_citations():
+    r = call(
+        "policy_check",
+        {"resource_type": "storage_bucket", "config": {"public_access": True}},
+    )
+    assert r["ok"] is True
+    assert {c["type"] for c in r["citations"]} == {"policy"}
+    assert len(r["citations"]) == len(r["result"]["policies_checked"])
+
+
+def test_audit_query_returns_audit_log_citation(monkeypatch):
+    monkeypatch.setattr("app.copilot_tools.query_interactions", lambda **k: [])
+    r = call("audit_query", {}, role="auditor")
+    assert r["ok"] is True
+    assert r["citations"][0]["type"] == "audit_log"
+

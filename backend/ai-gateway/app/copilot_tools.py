@@ -174,6 +174,15 @@ def policy_check(
         "policies_checked": applicable,
         "violations": violations,
         "violation_count": len(violations),
+        "citations": [
+            {
+                "id": f"cit-policy-{policy_id}",
+                "type": "policy",
+                "id_ref": policy_id,
+                "url": f"/policies/{policy_id}",
+            }
+            for policy_id in applicable
+        ],
     }
 
 
@@ -238,6 +247,14 @@ def audit_query(
         "queried_by": user_id,
         "since_days": since_days,
         "limit": limit,
+        "citations": [
+            {
+                "id": "cit-audit-log",
+                "type": "audit_log",
+                "id_ref": "ai_interactions",
+                "url": "/copilot/audit-log",
+            }
+        ],
     }
 
 

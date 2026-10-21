@@ -97,7 +97,7 @@ The gateway exposes 8 specialized tools. Every tool call is checked against the 
 ## Citations
 
 - **What a citation contains:** `id`, `type`, `id_ref`, and `url`.
-- **Supported source types:** Asset, Exposure, Risk Score, Policy, Report, Audit Log, and KB Article.
+- **Supported source types:** Asset, Exposure, Risk Score, Report, Policy, Audit Log. (KB Article is planned; no knowledge-base tool exists yet).
 - **Guarantee:** Every response returned by `/copilot/query` carries at least one structured citation. Citations are attached to tool results and responses, and are stored with each interaction in the audit log.
 
 ---
