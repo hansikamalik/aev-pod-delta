@@ -1,0 +1,8 @@
+{
+  "benchmark_connector": {
+    "bulk_data": {
+      "high_water_mark": "2026-10-21T12:39:06.008537+00:00",
+      "last_sync_at": "2026-10-21T12:39:06.008537+00:00"
+    }
+  }
+}

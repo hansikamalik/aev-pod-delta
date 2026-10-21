@@ -1,0 +1,8 @@
+{
+  "splunk_connector": {
+    "audit_logs": {
+      "high_water_mark": "2026-10-21T10:46:40.618514+00:00",
+      "last_sync_at": "2026-10-21T10:46:40.618514+00:00"
+    }
+  }
+}

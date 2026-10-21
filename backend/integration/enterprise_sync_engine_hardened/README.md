@@ -1,0 +1,12 @@
+# Enterprise Sync Engine Hardened Platform
+
+This repository houses the hardened enterprise sync engine, standardized connector contract[cite: 3], Vault credential management, monitoring telemetry, and automated regression test runners for all integrations.
+
+## Quick Start
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pytest -v
+python3 operations/full_regression.py
+python3 scripts/benchmark_sync.py
