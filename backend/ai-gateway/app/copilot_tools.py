@@ -4,61 +4,15 @@
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-from app.tools import register_tool
 from app import report_generate  # noqa: F401
-from app.mock_data import INTEGRATIONS, WORKFLOWS
-
-
-_POLICY_RULES: Dict[str, Dict[str, Any]] = {
-    "pol-no-public-access": {
-        "resource_types": ["storage_bucket"],
-        "field": "public_access",
-        "expected": False,
-        "description": "Storage buckets must not allow public access.",
-    },
-    "pol-storage-encryption": {
-        "resource_types": ["storage_bucket", "database"],
-        "field": "encrypted",
-        "expected": True,
-        "description": "Stored data must be encrypted.",
-    },
-    "pol-user-mfa": {
-        "resource_types": ["user_account"],
-        "field": "mfa_enabled",
-        "expected": True,
-        "description": "User accounts must have MFA enabled.",
-    },
-    "pol-firewall-admin-ports": {
-        "resource_types": ["firewall_rule"],
-        "field": "open_admin_ports",
-        "expected": False,
-        "description": "Administrative ports must not be openly exposed.",
-    },
-}
-
-_MOCK_AUDIT_EVENTS: List[Dict[str, Any]] = [
-    {
-        "resource": "firewall",
-        "actor": "hansika",
-        "action": "update",
-        "details": "Firewall rule updated",
-        "days_ago": 2,
-    },
-    {
-        "resource": "storage_bucket",
-        "actor": "analyst01",
-        "action": "policy_check",
-        "details": "Storage bucket policy checked",
-        "days_ago": 5,
-    },
-    {
-        "resource": "database",
-        "actor": "admin01",
-        "action": "read",
-        "details": "Database audit event",
-        "days_ago": 9,
-    },
-]
+from app.audit_log import query_interactions
+from app.mock_data import (
+    WORKFLOWS,
+    get_integrations,
+    get_mock_audit_events,
+    get_policy_rules,
+)
+from app.tools import register_tool
 
 
 def _start_workflow_run(
@@ -141,28 +95,31 @@ def policy_check(
     config: Dict[str, Any],
     policy_ids: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """Evaluate a resource configuration against supported policy rules."""
+    """Evaluate a resource configuration against shared mock policy rules."""
     del user_id
 
     if not isinstance(config, dict):
         raise ValueError("config must be an object")
 
+    policy_rules = get_policy_rules()
+
     if policy_ids is not None:
         unknown_ids = [
-            policy_id for policy_id in policy_ids
-            if policy_id not in _POLICY_RULES
+            policy_id
+            for policy_id in policy_ids
+            if policy_id not in policy_rules
         ]
         if unknown_ids:
             raise ValueError(f"Unknown policy IDs: {', '.join(unknown_ids)}")
         selected_ids = policy_ids
     else:
-        selected_ids = list(_POLICY_RULES.keys())
+        selected_ids = list(policy_rules.keys())
 
     applicable = []
     violations = []
 
     for policy_id in selected_ids:
-        rule = _POLICY_RULES[policy_id]
+        rule = policy_rules[policy_id]
         if resource_type not in rule["resource_types"]:
             continue
 
@@ -209,37 +166,79 @@ def audit_query(
     since_days: int = 7,
     limit: int = 50,
 ) -> Dict[str, Any]:
-    """Query mock audit events using optional filters."""
+    """Query real Copilot audit logs or shared mock audit events."""
     if not isinstance(since_days, int) or not 1 <= since_days <= 90:
         raise ValueError("since_days must be an integer between 1 and 90")
 
     if not isinstance(limit, int) or not 1 <= limit <= 200:
         raise ValueError("limit must be an integer between 1 and 200")
 
-    now = datetime.now(timezone.utc)
     entries: List[Dict[str, Any]] = []
 
-    for event in _MOCK_AUDIT_EVENTS:
-        if event["days_ago"] > since_days:
-            continue
-        if resource is not None and event["resource"] != resource:
-            continue
-        if actor is not None and event["actor"] != actor:
-            continue
-        if action is not None and event["action"] != action:
-            continue
+    # Use the real audit log for Copilot interactions.
+    if resource in (None, "ai_interaction") and action in (
+        None,
+        "copilot_query",
+    ):
+        start = datetime.now(timezone.utc) - timedelta(days=since_days)
 
-        entries.append(
-            {
-                "resource": event["resource"],
-                "actor": event["actor"],
-                "action": event["action"],
-                "details": event["details"],
-                "timestamp": (
-                    now - timedelta(days=event["days_ago"])
-                ).isoformat(),
-            }
-        )
+        try:
+            rows = query_interactions(
+                user_id=actor,
+                start_date=start.isoformat(),
+                limit=limit,
+            )
+        except Exception as exc:
+            raise RuntimeError("Audit log is currently unavailable") from exc
+
+        for row in rows:
+            created = row.get("created_at")
+            entries.append(
+                {
+                    "resource": "ai_interaction",
+                    "actor": row.get("user_id"),
+                    "action": "copilot_query",
+                    "details": (
+                        f"model={row.get('model')} "
+                        f"tokens={row.get('total_tokens')} "
+                        f"cost={row.get('cost')}"
+                    ),
+                    "timestamp": (
+                        created.isoformat()
+                        if hasattr(created, "isoformat")
+                        else str(created)
+                    ),
+                }
+            )
+
+    # Preserve filtering of shared mock events for other resources/actions.
+    if resource not in (None, "ai_interaction") or action not in (
+        None,
+        "copilot_query",
+    ):
+        now = datetime.now(timezone.utc)
+
+        for event in get_mock_audit_events():
+            if event["days_ago"] > since_days:
+                continue
+            if resource is not None and event["resource"] != resource:
+                continue
+            if actor is not None and event["actor"] != actor:
+                continue
+            if action is not None and event["action"] != action:
+                continue
+
+            entries.append(
+                {
+                    "resource": event["resource"],
+                    "actor": event["actor"],
+                    "action": event["action"],
+                    "details": event["details"],
+                    "timestamp": (
+                        now - timedelta(days=event["days_ago"])
+                    ).isoformat(),
+                }
+            )
 
     entries = entries[:limit]
 
@@ -257,7 +256,7 @@ def integration_list(
     user_id: str,
     status: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """List integrations, optionally filtered by connection status."""
+    """List shared mock integrations, optionally filtered by status."""
     del user_id
 
     valid_statuses = {"connected", "error", "disconnected"}
@@ -266,9 +265,10 @@ def integration_list(
             "status must be one of: connected, error, disconnected"
         )
 
+    mock_integrations = get_integrations()
     integrations = [
         integration.copy()
-        for integration in INTEGRATIONS
+        for integration in mock_integrations
         if status is None or integration["status"] == status
     ]
 

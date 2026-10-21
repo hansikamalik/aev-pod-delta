@@ -1,8 +1,64 @@
 
-"""Shared mock data for workflow_assist and integration_list tools."""
+"""Single source of truth for demo/mock data (shared mock layer).
 
-from typing import Any, Dict, List
+asset_search, exposure_query, risk_score_get, workflow_assist, policy_check,
+audit_query and integration_list all read from here.
+When real APIs arrive, replace this module with real lookups.
+"""
 
+from typing import Any, Dict, List, Optional
+
+
+ASSETS: List[Dict[str, Any]] = [
+    {
+        "id": "asset-001",
+        "name": "AI Gateway",
+        "type": "service",
+        "description": "FastAPI service responsible for AI Copilot requests.",
+        "status": "active",
+    },
+    {
+        "id": "asset-002",
+        "name": "Redis",
+        "type": "database",
+        "description": "Redis instance used for request rate limiting.",
+        "status": "active",
+    },
+    {
+        "id": "asset-003",
+        "name": "PostgreSQL",
+        "type": "database",
+        "description": "PostgreSQL database used by the platform.",
+        "status": "active",
+    },
+]
+
+RISK_FACTORS: Dict[str, Dict[str, int]] = {
+    "asset-001": {
+        "criticality": 95,
+        "threat_intel": 80,
+        "severity": 90,
+        "age": 70,
+        "business_impact": 90,
+        "likelihood": 75,
+    },
+    "asset-002": {
+        "criticality": 40,
+        "threat_intel": 30,
+        "severity": 35,
+        "age": 50,
+        "business_impact": 30,
+        "likelihood": 25,
+    },
+    "asset-003": {
+        "criticality": 85,
+        "threat_intel": 60,
+        "severity": 70,
+        "age": 55,
+        "business_impact": 80,
+        "likelihood": 50,
+    },
+}
 
 WORKFLOWS: Dict[str, Dict[str, Any]] = {
     "rotate_credentials": {
@@ -22,9 +78,94 @@ WORKFLOWS: Dict[str, Dict[str, Any]] = {
     },
 }
 
+POLICY_RULES: Dict[str, Dict[str, Any]] = {
+    "pol-no-public-access": {
+        "resource_types": ["storage_bucket"],
+        "field": "public_access",
+        "expected": False,
+        "description": "Storage buckets must not allow public access.",
+    },
+    "pol-storage-encryption": {
+        "resource_types": ["storage_bucket", "database"],
+        "field": "encrypted",
+        "expected": True,
+        "description": "Stored data must be encrypted.",
+    },
+    "pol-user-mfa": {
+        "resource_types": ["user_account"],
+        "field": "mfa_enabled",
+        "expected": True,
+        "description": "User accounts must have MFA enabled.",
+    },
+    "pol-firewall-admin-ports": {
+        "resource_types": ["firewall_rule"],
+        "field": "open_admin_ports",
+        "expected": False,
+        "description": "Administrative ports must not be openly exposed.",
+    },
+}
+
 INTEGRATIONS: List[Dict[str, Any]] = [
     {"name": "Microsoft Defender", "status": "connected"},
     {"name": "GitHub", "status": "connected"},
     {"name": "Okta", "status": "error"},
     {"name": "Splunk", "status": "disconnected"},
 ]
+
+MOCK_AUDIT_EVENTS: List[Dict[str, Any]] = [
+    {
+        "resource": "firewall",
+        "actor": "hansika",
+        "action": "update",
+        "details": "Firewall rule updated",
+        "days_ago": 2,
+    },
+    {
+        "resource": "storage_bucket",
+        "actor": "analyst01",
+        "action": "policy_check",
+        "details": "Storage bucket policy checked",
+        "days_ago": 5,
+    },
+    {
+        "resource": "database",
+        "actor": "admin01",
+        "action": "read",
+        "details": "Database audit event",
+        "days_ago": 9,
+    },
+]
+
+
+def get_asset(asset_id: str) -> Optional[Dict[str, Any]]:
+    """Return a copy of the asset with this ID, or None."""
+    for asset in ASSETS:
+        if asset["id"] == asset_id:
+            return asset.copy()
+    return None
+
+
+def get_asset_name(asset_id: str) -> str:
+    """Return the asset's name, or the ID itself if unknown."""
+    asset = get_asset(asset_id)
+    return asset["name"] if asset else asset_id
+
+
+def get_workflows() -> Dict[str, Dict[str, Any]]:
+    """Return workflows from the shared mock layer."""
+    return {key: dict(value) for key, value in WORKFLOWS.items()}
+
+
+def get_policy_rules() -> Dict[str, Dict[str, Any]]:
+    """Return policy rules from the shared mock layer."""
+    return {key: dict(value) for key, value in POLICY_RULES.items()}
+
+
+def get_integrations() -> List[Dict[str, Any]]:
+    """Return integrations from the shared mock layer."""
+    return [dict(integration) for integration in INTEGRATIONS]
+
+
+def get_mock_audit_events() -> List[Dict[str, Any]]:
+    """Return mock audit events from the shared mock layer."""
+    return [dict(event) for event in MOCK_AUDIT_EVENTS]
