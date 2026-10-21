@@ -1,5 +1,5 @@
 
-"""Shared mock data for workflow and integration tools."""
+"""Shared mock data for workflow_assist and integration_list tools."""
 
 from typing import Any, Dict, List
 
