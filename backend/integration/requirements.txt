@@ -9,3 +9,9 @@ jsonschema>=4.0.0
 pydantic>=2
 hvac
 requests
+# Local repository packages
+./google-workspace-auth
+./google-workspace-connector
+./active-directory-connector
+./microsoft365-connector
+./microsoft-defender-connector
