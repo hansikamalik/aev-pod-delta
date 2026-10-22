@@ -25,14 +25,14 @@ This document provides the operational runbook for engineers on-call supporting 
 
 ### 1. Fallback Detection & Metrics
 
-The AI Gateway implements a multi-tier model fallback hierarchy:
-1. **Primary**: Google Cloud Gemma (`gemma-4-31b-it`) via Google GenAI SDK.
-2. **Secondary**: Self-hosted Gemma running on Google Colab T4 GPU via ngrok tunnel (`gemma-colab-gpu`).
+The AI Gateway uses a single model family, Gemma, with a multi-tier fallback hierarchy:
+1. **Primary**: Google Cloud Gemma (`gemma-4-31b-it`) via Google GenAI SDK (requires `GOOGLE_API_KEY`).
+2. **Secondary**: Self-hosted Gemma running on Google Colab T4 GPU via ngrok tunnel (`gemma-colab-gpu`, requires `COLAB_GEMMA_URL`).
 3. **Safety Fallback**: Safe mock mode (`mock`) returning simulated responses with explicit diagnostic metadata.
 
 #### How to Identify Fallback in Response Payloads
 When the gateway falls back from the primary model, the HTTP `200 OK` response payload from `POST /copilot/query` contains:
-- `"fallback": true`
+- `"fallback_used": true`
 - `"fallback_reason"`: A diagnostic string detailing the upstream failure (e.g., `"Google Gemma failed: Google API 503 Quota Exceeded"`).
 - `"model"`: Identifies the active provider (`"gemma-colab-gpu"` or `"mock"` instead of `"gemma-4-31b-it"`).
 
@@ -49,14 +49,14 @@ The gateway utilizes a dedicated JSON logger `ai_gateway.fallback` defined in [`
 
 #### Monitoring Commands
 - **Docker logs filter**:
-  ```bash
+```bash
   docker logs -f aev_ai_gateway 2>&1 | grep "ai_gateway.fallback"
-  ```
+```
 - **Fallback spike alert**:
   The in-memory `FallbackMonitor` tracks fallbacks across a sliding 60-second window. If $\ge 3$ fallbacks occur within 60s, a `CRITICAL` alert log is emitted:
-  ```
+```
   CRITICAL: [ALERT] Fallback rate spike detected! 3 fallbacks in the last 60s (Threshold: 3).
-  ```
+```
 
 ---
 
@@ -88,13 +88,13 @@ curl -s -X POST "${COLAB_GEMMA_URL}/generate" \
 4. Scroll to the final cell running `ngrok.connect()`.
 5. Copy the newly assigned public forwarding address (e.g., `https://abcdef1234.ngrok-free.app`).
 6. Update `COLAB_GEMMA_URL` in the AI Gateway `.env` file:
-   ```bash
+```bash
    sed -i 's|COLAB_GEMMA_URL=.*|COLAB_GEMMA_URL=https://abcdef1234.ngrok-free.app|' backend/ai-gateway/.env
-   ```
+```
 7. Restart the AI Gateway container to pick up the new endpoint:
-   ```bash
+```bash
    docker compose restart ai-gateway
-   ```
+```
 
 ---
 
@@ -102,34 +102,8 @@ curl -s -X POST "${COLAB_GEMMA_URL}/generate" \
 
 - **Date:** October 21, 2026
 - **Evidence Log:** [`docs/evidence/failover_drill_20261021.txt`](evidence/failover_drill_20261021.txt)
-- **Objective:** Simulate a primary Google Cloud outage, confirm automatic routing to Colab T4 GPU, verify rate-spike alerting, and confirm seamless self-healing upon Google recovery.
-
-#### Step A: Kill Google Path & Confirm Colab Secondary Routing
-Simulated Google Cloud 503 Quota Exceeded failure (`RuntimeError("Google API 503 Quota Exceeded: Model temporarily unavailable")`) while keeping `COLAB_GEMMA_URL` online.
-
-```
-[Step A] Primary Google path killed. Sending requests...
-Request 1: model=gemma-colab-gpu | fallback=True | reason='Google Gemma failed: Google API 503 Quota Exceeded: Model temporarily unavailable'
-Request 2: model=gemma-colab-gpu | fallback=True | reason='Google Gemma failed: Google API 503 Quota Exceeded: Model temporarily unavailable'
-Request 3: model=gemma-colab-gpu | fallback=True | reason='Google Gemma failed: Google API 503 Quota Exceeded: Model temporarily unavailable'
-```
-
-#### Alert Verification Log
-Upon the 3rd request in the 60-second window, `FallbackMonitor` recorded a spike count of 3 and fired the critical alert:
-```
-{"timestamp": "2026-10-19 20:35:46,920", "level": "WARNING", "logger": "ai_gateway.fallback", "message": "Fallback triggered: from=google_gemma to=colab_gemma reason='Google Gemma failed: Google API 503 Quota Exceeded' count_in_window=1"}
-{"timestamp": "2026-10-19 20:35:46,925", "level": "WARNING", "logger": "ai_gateway.fallback", "message": "Fallback triggered: from=google_gemma to=colab_gemma reason='Google Gemma failed: Google API 503 Quota Exceeded' count_in_window=2"}
-{"timestamp": "2026-10-19 20:35:46,930", "level": "CRITICAL", "logger": "ai_gateway.fallback", "message": "[ALERT] Fallback rate spike detected! 3 fallbacks in the last 60s (Threshold: 3)."}
-```
-
-#### Step B: Restore Google Path & Confirm Recovery
-Restored `GOOGLE_API_KEY` and Google Cloud endpoint.
-
-```
-[Step B] Restoring primary Google path. Sending request...
-Request 4: model=gemma-4-31b-it | fallback=False | reason='None'
-```
-**Verdict:** Zero downtime, zero dropped requests. Failover, alerting, and automated self-healing verified successfully.
+- **Objective:** Simulate a primary Google Cloud outage, confirm automatic routing to the Colab secondary, verify rate-spike alerting, and confirm self-healing upon Google recovery.
+- **Results:** The full method, results, and test conditions are recorded once, in [Section B.3](#3-colab-failover-drill-hansika--aditya), so there is a single source of truth.
 
 ---
 
@@ -139,7 +113,7 @@ A total upstream outage occurs when both Google Cloud Gemma and the Colab second
 
 #### Outage Symptoms
 - Clients receive `[MOCK RESPONSE]` prepended answers.
-- Response payloads have `"model": "mock"` and `"fallback": true`.
+- Response payloads have `"model": "mock"` and `"fallback_used": true`.
 - Logs show chained fallback failures: `Google Gemma failed ... | Colab Gemma failed ...`.
 
 #### Triage Steps
@@ -147,16 +121,16 @@ A total upstream outage occurs when both Google Cloud Gemma and the Colab second
    - Check [Google AI Studio Console](https://aistudio.google.com/).
    - Validate if `GOOGLE_API_KEY` exceeded the per-minute (RPM) or daily request limits.
    - Run a test probe directly against Google Cloud:
-     ```bash
+```bash
      curl -s "https://generativelanguage.googleapis.com/v1beta/models/gemma-4-31b-it:generateContent?key=${GOOGLE_API_KEY}" \
        -H 'Content-Type: application/json' \
        -d '{"contents":[{"parts":[{"text":"healthcheck"}]}]}'
-     ```
+```
 2. **Rotate Google API Key**:
    - If quota is exhausted or key is disabled, insert a backup key into `backend/ai-gateway/.env`:
-     ```bash
+```bash
      GOOGLE_API_KEY=AIzaSy...backup_key...
-     ```
+```
    - Restart the gateway container: `docker compose restart ai-gateway`.
 3. **Restart Colab T4 Secondary**:
    - Follow the restart procedure in [Section 2](#2-google-colab--ngrok-tunnel-runbook).
@@ -190,39 +164,44 @@ A total upstream outage occurs when both Google Cloud Gemma and the Colab second
 #### Deployment Rollback
 If a faulty deployment causes gateway instability or test regressions:
 1. Revert to previous stable commit on branch `develop`:
-   ```bash
+```bash
    git log --oneline -n 5
    git checkout <stable_commit_hash>
-   ```
+```
 2. Rebuild and bounce Docker containers:
-   ```bash
+```bash
    docker compose down
    docker compose up -d --build
-   ```
+```
 3. Verify gateway health:
-   ```bash
+```bash
    curl -i http://localhost:8001/health
    # Expected: HTTP 200 OK {"status": "healthy", "service": "AI Gateway Service"}
-   ```
+```
 
 #### Data Retention Cleanup Job
 Under the regulatory security policy, all interactions in `ai_interactions` must be retained for at most 365 days.
 
 - **Automated function**: [`app/audit_log.py:cleanup_expired_rows()`](../app/audit_log.py).
+- **Via API (admin only)**: `POST /admin/retention-cleanup` starts the job in the background. It requires the header `X-User-Role: admin`; any other role receives HTTP 403.
+```bash
+  curl -i -X POST http://localhost:8001/admin/retention-cleanup \
+    -H "X-User-Role: admin"
+```
 - **Manual Execution via CLI**:
-  ```bash
+```bash
   python -c "from app.audit_log import cleanup_expired_rows; count = cleanup_expired_rows(); print(f'Purged {count} expired interaction rows')"
-  ```
+```
 - **Direct SQL Execution**:
-  ```sql
+```sql
   DELETE FROM ai_interactions
   WHERE created_at < NOW() - INTERVAL '365 days';
-  ```
+```
 - **Recommended Cron Schedule**:
   Run daily at 02:00 UTC:
-  ```cron
+```cron
   0 2 * * * cd /opt/aev-pod-delta/backend/ai-gateway && python -c "from app.audit_log import cleanup_expired_rows; cleanup_expired_rows()" >> /var/log/ai_retention.log 2>&1
-  ```
+```
 
 ---
 
@@ -255,6 +234,9 @@ Under the regulatory security policy, all interactions in `ai_interactions` must
 ### 2. Adversarial Testing Beyond the Standard Corpus
 
 To ensure defense-in-depth, a secondary pen-test suite of 25 novel adversarial probes was executed against the gateway guardrails.
+
+- **Evidence Catalog:** the 25 probes are listed in [`docs/evidence/pen_test_probes.md`](evidence/pen_test_probes.md) (Phase 2 Probe Catalog).
+- **Automated Re-run:** every probe is executed on each test run by [`tests/test_guardrails_phase2.py`](../tests/test_guardrails_phase2.py).
 
 #### Penetration Testing Results Table
 
@@ -295,11 +277,12 @@ To ensure defense-in-depth, a secondary pen-test suite of 25 novel adversarial p
 - **Date:** October 21, 2026
 - **Participants:** Hansika Malik, Aditya
 - **Evidence Log:** [`docs/evidence/failover_drill_20261021.txt`](evidence/failover_drill_20261021.txt)
-- **Objective:** Validate real-time failover from primary Google Cloud Gemma to secondary Colab T4 GPU under simulated outage conditions.
+- **Objective:** Validate failover from primary Google Cloud Gemma to the secondary Colab Gemma under simulated outage conditions.
+- **Test conditions:** The Google failure was simulated (invalid API key, `401 Unauthorized`). The evidence log does not record whether the Colab secondary was a live tunnel or a stand-in responder, so this drill verifies the gateway's routing, alerting, and recovery logic only. It does not measure real Colab inference quality or latency.
 
 #### Drill Methodology & Measured Results
 1. **Primary Outage Injection**:
-   - Simulated Google Cloud failure (`401 Unauthorized / Invalid API key`) while keeping Colab GPU active.
+   - Simulated Google Cloud failure (`401 Unauthorized / Invalid API key`) while keeping the Colab secondary active.
 2. **Secondary Failover Verification**:
    - Dispatched a sequence of 10 copilot queries to `/copilot/query`.
    - **Result**: 10/10 incoming requests (100%) were automatically caught by the gateway fallback wrapper and routed to `COLAB_GEMMA_URL`.
@@ -344,7 +327,7 @@ Throughput:                   145.20 requests/second
 #### Key Findings
 - **Zero 5xx Outages**: Under 10-thread burst concurrency, the gateway yielded zero HTTP 500/502 server errors.
 - **Exact Token Bucket Enforcement**: Exactly 20 requests returned HTTP 429 once user burst capacities (8 requests/user) were depleted, correctly safeguarding downstream LLMs without starving other tenants.
-- **Low Latency Profile**: Average latency was 67ms, with a 95th percentile latency of 105ms across concurrent threads.
+- **Low Latency Profile**: Average latency was 67ms, with a 95th percentile latency of 105ms across concurrent threads (gateway overhead only, model stubbed).
 
 ---
 
@@ -356,19 +339,19 @@ Throughput:                   145.20 requests/second
 #### Leaked Vault Credentials Incident
 - **Finding:** GitGuardian flagged a critical secret leak: an exposed HashiCorp Vault initial root token and 5 Shamir unseal keys in the repository.
 - **Root Cause:** A test initialization file `backend/integration/vault-enterprise-framework/vault_keys.txt` was accidentally committed in commit `8644bfa52fff02e43ffb8691c72fb660a77495b8` with:
-  ```
+```
   Initial Root Token: <REDACTED_ROOT_TOKEN>
   Unseal Key 1: <REDACTED_UNSEAL_KEY_1>
   Unseal Key 2: <REDACTED_UNSEAL_KEY_2>
   ...
-  ```
+```
 - **Remediation Completed (PR #12 & PR #14)**:
-  - Deleted `vault_keys.txt` and purged the unused `vault-enterprise-framework` directory from the active branch tree, and added `vault_keys*.txt` to `.gitignore`.
+  - Deleted `vault_keys.txt` from the active branch tree and added `vault_keys*.txt` to `.gitignore`.
   - Removed plaintext Postgres passwords (`POSTGRES_PASSWORD: secret`) from `docker-compose.yml` and `.env.example`.
   - Configured strict environment variable interpolation in `docker-compose.yml`:
-    ```yaml
+```yaml
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your .env file}
-    ```
+```
 
 #### Open Items & Risk Mitigation Checklist
 
