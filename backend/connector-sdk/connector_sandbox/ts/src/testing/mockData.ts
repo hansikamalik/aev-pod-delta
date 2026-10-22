@@ -31,6 +31,6 @@ export const MOCK_ASSETS = [
   },
 ];
 
-export const MOCK_CREDENTIALS = { apiKey: "test-key-do-not-use-in-prod" };
+export const MOCK_CREDENTIALS = { api_key: "test-key-do-not-use-in-prod" };
 
 export const MOCK_CONFIG = { region: "us-east-1" };
