@@ -230,3 +230,6 @@ secrets/
 secrets.*
 vault_keys*.txt
 *unseal*keys*
+
+# Node.js dependencies
+node_modules/
