@@ -36,14 +36,6 @@ testpaths = ["tests"]
 line-length = 100
 target-version = "py311"
 
-[project]
-name = "enterprise-sync-engine"
-version = "1.0.0"
-dependencies = [
-    # Point to the local directory relative to the project root
-    "google-workspace-auth @ file://./google-workspace-auth",
-    # Include your other dependencies here...
-]
 
 
 
