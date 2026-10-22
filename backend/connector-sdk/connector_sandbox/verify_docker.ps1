@@ -7,14 +7,14 @@ $root = $PSScriptRoot
 $fail = $false
 
 function Check($Name, $Dir, $Image) {
-    Write-Host "`n=== $Name: docker build (--no-cache) ===" -ForegroundColor Cyan
+    Write-Host "`n=== ${Name}: docker build (--no-cache) ===" -ForegroundColor Cyan
     docker build --no-cache -t $Image $Dir
     if ($LASTEXITCODE -ne 0) {
         Write-Host "FAIL  $Name  (build failed)" -ForegroundColor Red
         $script:fail = $true; return
     }
 
-    Write-Host "=== $Name: docker run ===" -ForegroundColor Cyan
+    Write-Host "=== ${Name}: docker run ===" -ForegroundColor Cyan
     $out = docker run --rm $Image
     $code = $LASTEXITCODE
     $out | Write-Host

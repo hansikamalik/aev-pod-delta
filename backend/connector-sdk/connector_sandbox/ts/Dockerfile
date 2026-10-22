@@ -36,7 +36,6 @@ RUN npm ci --omit=dev
 
 COPY --from=build /app/dist ./dist
 
-RUN useradd --create-home --uid 1000 sdk
-USER sdk
+USER node
 
 ENTRYPOINT ["node", "dist/scripts/runSample.js"]
