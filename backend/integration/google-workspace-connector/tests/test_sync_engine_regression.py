@@ -132,13 +132,7 @@ def build_fetch(connector, config):
     async def fetch(**kwargs):
         return [event async for event in connector.ingest(config)]
     return fetch
-
-
-@pytest.mark.asyncio
-async def test_google_workspace_initial_sync(
-    google_connector,
-    config,
-):
+    
 @pytest.mark.asyncio
 async def test_google_workspace_initial_sync(google_connector):
     platform = FakePlatformClient()
