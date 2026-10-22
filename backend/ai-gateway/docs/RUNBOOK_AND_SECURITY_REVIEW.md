@@ -321,6 +321,7 @@ To ensure defense-in-depth, a secondary pen-test suite of 25 novel adversarial p
 - **Evidence Log:** [`docs/evidence/load_test_run_20261021.txt`](evidence/load_test_run_20261021.txt)
 - **Profile:** Multi-threaded burst traffic execution
 - **Configuration:** 100 requests, 10 concurrent worker threads, 10 simulated tenant accounts (`user_org_1`..`user_org_10`) on `free` tier.
+- **Test conditions:** run against a **stubbed model** (no real Google or Colab call). The 0.067s average latency is gateway overhead only (guardrails, rate limiter, tool dispatch). This run proves rate limiting, concurrency handling and zero 5xx errors. It does **not** prove the plan's "AI query under 5s" target; that needs a run against the live model.
 - **Sanity Check & Token Bucket Semantics:** The `free` tier grants a burst capacity of 8 requests per user (`app/rate_limiter.py`). Across 10 distinct tenants sending 10 requests each concurrently, exactly 80 requests are allowed (200 OK) and 20 requests are rate-limited (429 Too Many Requests), yielding exactly an 80/20 distribution.
 
 #### Benchmark Execution Results

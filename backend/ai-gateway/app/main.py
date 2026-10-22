@@ -6,8 +6,8 @@ import logging
 import re
 from typing import Any, List, Optional
 
-from fastapi import BackgroundTasks, FastAPI, Header, HTTPException
-from pydantic import BaseModel
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Query
+from pydantic import BaseModel, Field
 
 # Import these modules to register their tools.
 from app import asset_search, exposure_query, mock_tools  # noqa: F401
@@ -64,9 +64,9 @@ class FactCheckRequest(BaseModel):
 
 
 class CitationFlagRequest(BaseModel):
-    interaction_id: str
-    citation_id: str
-    reason: str
+    interaction_id: str = Field(min_length=1, max_length=128)
+    citation_id: str = Field(min_length=1, max_length=128)
+    reason: str = Field(min_length=1, max_length=1000)
 
 
 def _add_citations(target: List[Any], source: Any) -> None:
@@ -327,7 +327,7 @@ def get_audit_log(
     model: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
-    limit: int = 50,
+    limit: int = Query(default=50, ge=1, le=500),
     x_user_role: Optional[str] = Header(default="anonymous"),
 ):
     """Filter the ai_interactions audit log. Admin/auditor only."""
@@ -373,8 +373,21 @@ def fact_check_hook(payload: FactCheckRequest):
 def flag_citation_endpoint(
     payload: CitationFlagRequest,
     x_user_id: Optional[str] = Header(default="anonymous"),
+    x_user_role: Optional[str] = Header(default="anonymous"),
 ):
     """Record a user flag marking a citation as inaccurate."""
+    if not is_allowed(x_user_role, "citation_flag"):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "Permission denied",
+                "reason": (
+                    f"Role '{x_user_role}' is not permitted "
+                    "to flag citations."
+                ),
+            },
+        )
+
     flag_citation(
         interaction_id=payload.interaction_id,
         citation_id=payload.citation_id,
@@ -389,8 +402,23 @@ def flag_citation_endpoint(
 
 
 @app.post("/admin/retention-cleanup")
-def retention_cleanup(background_tasks: BackgroundTasks):
-    """Start expired-row cleanup in the background."""
+def retention_cleanup(
+    background_tasks: BackgroundTasks,
+    x_user_role: Optional[str] = Header(default="anonymous"),
+):
+    """Start expired-row cleanup in the background. Admin only."""
+    if x_user_role != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "error": "Permission denied",
+                "reason": (
+                    f"Role '{x_user_role}' is not permitted "
+                    "to run retention cleanup."
+                ),
+            },
+        )
+
     background_tasks.add_task(cleanup_expired_rows)
 
     return {

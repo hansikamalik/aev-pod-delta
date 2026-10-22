@@ -79,8 +79,9 @@ def test_build_citation_supported_and_unsupported_types():
 def test_ensure_response_citation_empty_adds_default():
     empty_res = ensure_response_citation([], question="What is MFA?", answer="MFA is ...")
     assert len(empty_res) == 1
-    assert empty_res[0]["type"] == "kb_article"
-    assert "Enterprise Security Knowledge Base" in empty_res[0]["title"]
+    assert empty_res[0]["type"] == "none"
+    assert empty_res[0]["title"] == "No source available"
+    assert empty_res[0]["url"] is None
 
 
 def test_ensure_response_citation_non_empty_retains_existing():
@@ -105,8 +106,7 @@ def test_query_always_carries_citation():
         data = response.json()
         assert "citations" in data
         assert len(data["citations"]) >= 1
-        assert any(c.get("type") in {"kb_article", "document", "reference", "asset"}
-                   for c in data["citations"])
+        assert any(c.get("type") == "none" for c in data["citations"])
 
 
 def test_flag_citation_endpoint_success():
@@ -114,7 +114,7 @@ def test_flag_citation_endpoint_success():
     with patch("app.audit_log._get_connection", return_value=mock_conn):
         response = client.post(
             "/copilot/citations/flag",
-            headers={"X-User-ID": "analyst-1"},
+            headers={"X-User-ID": "analyst-1", "X-User-Role": "analyst"},
             json={
                 "interaction_id": "int-123",
                 "citation_id": "cit-policy-1",

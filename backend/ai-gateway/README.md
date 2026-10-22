@@ -60,13 +60,13 @@ The AI Gateway Service is the core backend component of the AEV Platform. It is 
 | GET | `/health` | Health check. Returns `{"status": "healthy", "service": "AI Gateway Service"}`. |
 | POST | `/copilot/query` | Processes a question with guardrails, tools, citations, and tracking. |
 | POST | `/citations/` | Matches reference documents against text and returns verified citations. |
-| GET | `/copilot/audit-log` | Fetches audit log rows. Query filters: `user_id`, `model`, `start_date`, `end_date`, `limit` (default 50). Admin and auditor roles only. |
-| POST | `/copilot/citations/flag` | Flags a citation as inaccurate with reason and user identity. |
+| GET | `/copilot/audit-log` | Fetches audit log rows. Query filters: `user_id`, `model`, `start_date`, `end_date`, `limit` (default 50, maximum 500; higher values return 422). Admin and auditor roles only. |
+| POST | `/copilot/citations/flag` | Flags a citation as inaccurate with reason and user identity. Admin, analyst and viewer roles only. `reason` is 1 to 1000 characters. |
 | POST | `/webhooks/fact-check` | Records a fact-check result sent by AI Context for an interaction. |
-| POST | `/admin/retention-cleanup` | Starts the expired audit log cleanup job in the background. |
+| POST | `/admin/retention-cleanup` | Starts the expired audit log cleanup job in the background. Admin role only (`X-User-Role: admin`). |
 | GET | `/metrics/fallback` | Fallback counts, fallback rate, and reason breakdown. |
 
-**Request headers for `/copilot/query`** (all optional, with defaults):
+**Request headers** (all optional, with defaults):
 
 | Header | Purpose | Default |
 |---|---|---|
@@ -75,6 +75,8 @@ The AI Gateway Service is the core backend component of the AEV Platform. It is 
 | `X-Org-Tier` | Org tier for rate limits (`free`, `pro`, `enterprise`) | `free` |
 | `X-Org-ID` | Organization used for running spend and budget alerts | none |
 | `X-Budget-Cap` | Per-request cost cap only. It never overrides an org's configured cap. | none |
+
+> **Header trust:** the gateway trusts `X-User-ID` and `X-User-Role` exactly as sent and does no authentication of its own. It must sit behind Pod Alpha authentication, which sets these headers. Never expose it directly to clients.
 
 ---
 
@@ -98,7 +100,8 @@ The gateway exposes 8 specialized tools. Every tool call is checked against the 
 ## Citations
 
 - **What a citation contains:** `id`, `type`, `id_ref`, and `url`.
-- **Supported source types:** Asset, Exposure, Risk Score, Report, Policy, Audit Log. (KB Article is planned; no knowledge-base tool exists yet).
+- **Supported source types:** Asset, Exposure, Risk Score, Report, Policy, Audit Log. KB Article is planned; no knowledge-base tool exists yet.
+- **Placeholder citation:** if a response has no real source, the gateway adds `{"id": "cit-none", "type": "none", "title": "No source available"}` so the guarantee below still holds. It is not a real source and must not be treated as one.
 - **Guarantee:** Every response returned by `/copilot/query` carries at least one structured citation. Citations are attached to tool results and responses, and are stored with each interaction in the audit log.
 
 ---

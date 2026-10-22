@@ -9,10 +9,12 @@ ROLE_PERMISSIONS = {
         "report_generate",
         "policy_check",
         "integration_list",
+        "citation_flag",
     },
     "viewer": {
         "asset_search",
         "integration_list",
+        "citation_flag",
     },
     "auditor": {
         "audit_query",
