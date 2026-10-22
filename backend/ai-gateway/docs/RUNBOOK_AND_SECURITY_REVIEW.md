@@ -68,6 +68,7 @@ The secondary provider hosts Gemma on a Google Colab instance equipped with an N
 - **Inference Server**: FastAPI / vLLM listening on `localhost:8000` inside the Colab runtime.
 - **Tunnel**: ngrok exposes the port to a public URL (e.g., `https://xxxx-xx-xx-xx.ngrok-free.app`).
 - **Configuration**: The gateway environment variable `COLAB_GEMMA_URL` in `.env` points to the tunnel URL.
+- **URL lifetime:** The ngrok URL expires and changes every time the Colab session restarts, so `COLAB_GEMMA_URL` is never committed. It lives only in the local `.env` and must be updated using the restart procedure below.
 
 #### Health Verification
 Test the tunnel directly using `curl`:
@@ -278,7 +279,7 @@ To ensure defense-in-depth, a secondary pen-test suite of 25 novel adversarial p
 - **Participants:** Hansika Malik, Aditya
 - **Evidence Log:** [`docs/evidence/failover_drill_20261021.txt`](evidence/failover_drill_20261021.txt)
 - **Objective:** Validate failover from primary Google Cloud Gemma to the secondary Colab Gemma under simulated outage conditions.
-- **Test conditions:** The Google failure was simulated (invalid API key, `401 Unauthorized`). The evidence log does not record whether the Colab secondary was a live tunnel or a stand-in responder, so this drill verifies the gateway's routing, alerting, and recovery logic only. It does not measure real Colab inference quality or latency.
+- **Test conditions:** The Google failure was simulated (invalid API key, `401 Unauthorized`). The Colab secondary was a live Gemma instance reached through an ngrok tunnel. The tunnel URL is not committed to the repo because ngrok issues a new URL every session; it is set in `.env` as `COLAB_GEMMA_URL` at run time. The drill therefore exercises real Colab inference, not a stub.
 
 #### Drill Methodology & Measured Results
 1. **Primary Outage Injection**:

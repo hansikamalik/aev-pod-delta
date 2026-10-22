@@ -2,6 +2,7 @@
 AI GATEWAY - LIVE COLAB FAILOVER DRILL EXECUTION REPORT
 Date: October 21, 2026
 Operators: Hansika Malik, Aditya, More Shivaram
+Colab secondary: live Gemma via ngrok tunnel (URL not recorded here; it changes every session)
 Target Endpoint: POST /copilot/query & GET /metrics/fallback
 ================================================================================
 
