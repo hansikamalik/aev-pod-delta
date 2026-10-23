@@ -105,3 +105,22 @@ The passing test validates simulated engine recreation only. It does not establi
 3. Confirm that events are not lost or incorrectly duplicated.
 4. Record logs, checkpoint values, and test results.
 5. Obtain sign-off after the actual DR test passes.
+
+## Credential Rotation Sign-off Status
+
+**Responsible person:** Harshal Sahare
+**Status:** PENDING FORMAL SIGN-OFF
+
+### Verification checklist
+
+- [ ] Confirm that connector credentials are retrieved through the approved Vault integration.
+- [ ] Verify that no credentials are hardcoded in source code or configuration files.
+- [ ] Perform a credential rotation test in an approved test environment.
+- [ ] Confirm that connectors authenticate successfully after rotation.
+- [ ] Verify that sync jobs continue successfully after credentials are rotated.
+- [ ] Confirm that credential access and rotation events are logged as required.
+- [ ] Record the test results and obtain formal sign-off from Harshal Sahare.
+
+**Current evidence:** Formal credential rotation sign-off has not yet been confirmed in the available project records.
+
+**Important:** This item remains pending until the rotation test has been executed, its results documented, and the responsible person has approved the outcome. Passing regression tests alone does not prove that credential rotation has passed.
