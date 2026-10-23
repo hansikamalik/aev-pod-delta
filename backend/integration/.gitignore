@@ -16,3 +16,13 @@ __pycache__/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+# Python Bytecode & Caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Node Modules
+node_modules/
