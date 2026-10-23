@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException
+from typing import Optional
+from fastapi import FastAPI, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -99,8 +100,14 @@ def create_memory(
 
 @app.get("/memory")
 def get_all_memory(
+    x_user_role: Optional[str] = Header(default="anonymous"),
     db: Session = Depends(get_db)
 ):
+    if x_user_role != "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Permission denied: Admin role required to query global memory index."
+        )
     memories = db.query(AIMemory).all()
 
     return [

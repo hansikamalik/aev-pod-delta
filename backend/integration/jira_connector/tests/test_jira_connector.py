@@ -1,3 +1,4 @@
+import asyncio
 import pytest
 from connector_sdk import AssetType, SyncStatus
 
@@ -46,7 +47,8 @@ def test_ingest_pushes_ticket_status_to_platform():
 
 def test_sync_success_path():
     connector = JiraConnector(base_url="https://acme.atlassian.net", project_key="SEC", client=FakeJiraAPIClient())
-    result = connector.sync()
+    raw_result = connector.sync()
+    result = asyncio.run(raw_result) if asyncio.iscoroutine(raw_result) else raw_result
 
     assert result.status == SyncStatus.SUCCESS
     assert result.assets_discovered == 2
@@ -60,7 +62,8 @@ def test_sync_reports_failure_when_push_fails():
         client=FakeJiraAPIClient(),
         platform_client=InMemoryPlatformClient(fail=True),
     )
-    result = connector.sync()
+    raw_result = connector.sync()
+    result = asyncio.run(raw_result) if asyncio.iscoroutine(raw_result) else raw_result
 
     assert result.status == SyncStatus.FAILED
     assert result.assets_pushed == 0

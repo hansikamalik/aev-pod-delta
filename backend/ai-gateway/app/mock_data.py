@@ -4,9 +4,12 @@ asset_search, exposure_query, risk_score_get, workflow_assist and integration_li
 all read from here. When real APIs arrive, replace this module with real lookups.
 """
 
+import json
+import os
 from typing import Any, Dict, List, Optional
 
-ASSETS: List[Dict[str, Any]] = [
+# Default fallback data if no dataset is mounted
+_DEFAULT_ASSETS: List[Dict[str, Any]] = [
     {
         "id": "asset-001",
         "name": "AI Gateway",
@@ -30,8 +33,7 @@ ASSETS: List[Dict[str, Any]] = [
     },
 ]
 
-# Risk factors (0-100 each) per asset ID, used by risk_score_get.
-RISK_FACTORS: Dict[str, Dict[str, int]] = {
+_DEFAULT_RISK_FACTORS: Dict[str, Dict[str, int]] = {
     "asset-001": {
         "criticality": 95, "threat_intel": 80, "severity": 90,
         "age": 70, "business_impact": 90, "likelihood": 75,
@@ -45,6 +47,34 @@ RISK_FACTORS: Dict[str, Dict[str, int]] = {
         "age": 55, "business_impact": 80, "likelihood": 50,
     },
 }
+
+# Dynamic Dataset Resolution
+_dataset_path = os.getenv("AEV_DATASET_PATH")
+if not _dataset_path:
+    _candidate = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "aev_unified_handover_dataset.json")
+    )
+    if os.path.exists(_candidate):
+        _dataset_path = _candidate
+
+_DYNAMIC_DATA: Optional[Dict[str, Any]] = None
+if _dataset_path and os.path.exists(_dataset_path):
+    try:
+        with open(_dataset_path, "r", encoding="utf-8") as _f:
+            _DYNAMIC_DATA = json.load(_f)
+    except Exception:
+        _DYNAMIC_DATA = None
+
+# Initialize collections dynamically
+if _DYNAMIC_DATA and "assets" in _DYNAMIC_DATA:
+    ASSETS: List[Dict[str, Any]] = _DYNAMIC_DATA["assets"]
+else:
+    ASSETS = _DEFAULT_ASSETS
+
+if _DYNAMIC_DATA and "risk_factor_profiles" in _DYNAMIC_DATA:
+    RISK_FACTORS: Dict[str, Dict[str, int]] = _DYNAMIC_DATA["risk_factor_profiles"]
+else:
+    RISK_FACTORS = _DEFAULT_RISK_FACTORS
 
 WORKFLOWS: Dict[str, Dict[str, Any]] = {
     "rotate_credentials": {
@@ -155,3 +185,32 @@ def get_integrations() -> List[Dict[str, Any]]:
 def get_mock_audit_events() -> List[Dict[str, Any]]:
     """Return mock audit events from the shared mock layer."""
     return [dict(e) for e in MOCK_AUDIT_EVENTS]
+
+
+def get_exposures() -> List[Dict[str, Any]]:
+    """Return exposures dynamically loaded from dataset or defaults."""
+    if _DYNAMIC_DATA and "exposures" in _DYNAMIC_DATA:
+        return [dict(e) for e in _DYNAMIC_DATA["exposures"]]
+    return [
+        {
+            "asset_id": "asset-001",
+            "asset_name": get_asset_name("asset-001"),
+            "exposure": "internal",
+            "risk_level": "medium",
+            "status": "active",
+        },
+        {
+            "asset_id": "asset-002",
+            "asset_name": get_asset_name("asset-002"),
+            "exposure": "internal",
+            "risk_level": "low",
+            "status": "active",
+        },
+        {
+            "asset_id": "asset-003",
+            "asset_name": get_asset_name("asset-003"),
+            "exposure": "restricted",
+            "risk_level": "high",
+            "status": "active",
+        },
+    ]

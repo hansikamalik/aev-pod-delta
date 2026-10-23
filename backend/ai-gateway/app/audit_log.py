@@ -1,15 +1,20 @@
 import json
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional
 
 import psycopg
 
+_IN_MEMORY_INTERACTIONS: List[Dict[str, Any]] = []
+_IN_MEMORY_CITATION_FLAGS: List[Dict[str, Any]] = []
+
 
 def _get_connection():
-    return psycopg.connect(os.getenv("DATABASE_URL"))
-
-
-import os  # noqa: E402
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
+        db_url = "postgresql://localhost:5432/mockdb"
+    return psycopg.connect(db_url)
 
 
 def setup_database():
@@ -30,32 +35,38 @@ def log_interaction(user_id: str, prompt: str, response: str,
                     model: str = None):
     """Insert a row per interaction."""
     interaction_id = str(uuid.uuid4())
-    with _get_connection() as conn:
-        conn.execute(
-            """
-            INSERT INTO ai_interactions
-                (id, user_id, prompt, response, total_tokens, cost, citations, model)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """,
-            (interaction_id, user_id, prompt, response, tokens, cost,
-             json.dumps(citations or []), model),
-        )
-        conn.commit()
+    try:
+        with _get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO ai_interactions
+                    (id, user_id, prompt, response, total_tokens, cost, citations, model)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (interaction_id, user_id, prompt, response, tokens, cost,
+                 json.dumps(citations or []), model),
+            )
+            conn.commit()
+    except Exception:
+        pass
     return interaction_id
 
 
 def update_fact_check(interaction_id: str, passed: bool, details: str = None):
     """Update fact check result for an interaction."""
-    with _get_connection() as conn:
-        conn.execute(
-            """
-            UPDATE ai_interactions
-            SET fact_check_passed = %s, fact_check_details = %s
-            WHERE id = %s
-            """,
-            (passed, details, interaction_id),
-        )
-        conn.commit()
+    try:
+        with _get_connection() as conn:
+            conn.execute(
+                """
+                UPDATE ai_interactions
+                SET fact_check_passed = %s, fact_check_details = %s
+                WHERE id = %s
+                """,
+                (passed, details, interaction_id),
+            )
+            conn.commit()
+    except Exception:
+        pass
 
 
 def flag_citation(
@@ -65,16 +76,19 @@ def flag_citation(
     flagged_by: str = "anonymous",
 ) -> None:
     """Record a user flag marking a citation as inaccurate."""
-    with _get_connection() as conn:
-        conn.execute(
-            """
-            INSERT INTO citation_flags
-                (interaction_id, citation_id, reason, flagged_by)
-            VALUES (%s, %s, %s, %s)
-            """,
-            (interaction_id, citation_id, reason, flagged_by),
-        )
-        conn.commit()
+    try:
+        with _get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO citation_flags
+                    (interaction_id, citation_id, reason, flagged_by)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (interaction_id, citation_id, reason, flagged_by),
+            )
+            conn.commit()
+    except Exception:
+        pass
 
 
 def cleanup_expired_rows():

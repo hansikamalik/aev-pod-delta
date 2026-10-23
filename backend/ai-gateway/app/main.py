@@ -98,7 +98,10 @@ def _ensure_risk_score_citation(
 @app.on_event("startup")
 def startup_event():
     """Initialize the database schema when the application starts."""
-    setup_database()
+    try:
+        setup_database()
+    except Exception as exc:
+        logger.warning(f"Database setup skipped (DB offline): {exc}")
 
 
 @app.get("/")
@@ -224,6 +227,42 @@ def query(
             question_for_model = (
                 f"{sanitized_question}\n\n"
                 "Verified data from the risk_score_get tool follows. "
+                "Use this data as context for your answer:\n"
+                f"{json.dumps(tool_result, default=str)}"
+            )
+    elif any(kw in sanitized_question.lower() for kw in ["exposure", "vulnerabilit", "cve"]) and is_allowed(x_user_role, "exposure_query"):
+        tool_call = dispatch_tool(
+            "exposure_query",
+            {},
+            user_id=x_user_id,
+            role=x_user_role,
+        )
+        if isinstance(tool_call, dict) and tool_call.get("ok"):
+            tool_result = tool_call.get("result")
+            _add_citations(citations, tool_call.get("citations", []))
+            if isinstance(tool_result, dict):
+                _add_citations(citations, tool_result.get("citations", []))
+            question_for_model = (
+                f"{sanitized_question}\n\n"
+                "Verified data from the exposure_query tool follows. "
+                "Use this data as context for your answer:\n"
+                f"{json.dumps(tool_result, default=str)}"
+            )
+    elif any(kw in sanitized_question.lower() for kw in ["integration", "connected tool"]) and is_allowed(x_user_role, "integration_list"):
+        tool_call = dispatch_tool(
+            "integration_list",
+            {},
+            user_id=x_user_id,
+            role=x_user_role,
+        )
+        if isinstance(tool_call, dict) and tool_call.get("ok"):
+            tool_result = tool_call.get("result")
+            _add_citations(citations, tool_call.get("citations", []))
+            if isinstance(tool_result, dict):
+                _add_citations(citations, tool_result.get("citations", []))
+            question_for_model = (
+                f"{sanitized_question}\n\n"
+                "Verified data from the integration_list tool follows. "
                 "Use this data as context for your answer:\n"
                 f"{json.dumps(tool_result, default=str)}"
             )

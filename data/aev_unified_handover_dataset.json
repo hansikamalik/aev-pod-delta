@@ -23,7 +23,7 @@
       "id": "asset-001",
       "source": "azure",
       "type": "compute",
-      "name": "AI Gateway / Web Core",
+      "name": "AI Gateway",
       "operating_system": "Debian Linux 12",
       "ip_address": "10.0.1.15",
       "status": "active",
@@ -44,7 +44,7 @@
       "id": "asset-002",
       "source": "aws",
       "type": "database",
-      "name": "Redis In-Memory Cache",
+      "name": "Redis",
       "operating_system": "Alpine Linux 3.19",
       "ip_address": "10.0.2.10",
       "status": "active",
@@ -65,7 +65,7 @@
       "id": "asset-003",
       "source": "azure",
       "type": "database",
-      "name": "PostgreSQL Primary Database",
+      "name": "PostgreSQL",
       "operating_system": "Ubuntu Linux 22.04 LTS",
       "ip_address": "10.0.2.20",
       "status": "active",
@@ -264,7 +264,7 @@
   "exposures": [
     {
       "asset_id": "asset-001",
-      "asset_name": "AI Gateway / Web Core",
+      "asset_name": "AI Gateway",
       "exposure": "internal",
       "risk_level": "medium",
       "cve_id": "CVE-2024-21626",
@@ -273,7 +273,7 @@
     },
     {
       "asset_id": "asset-002",
-      "asset_name": "Redis In-Memory Cache",
+      "asset_name": "Redis",
       "exposure": "internal",
       "risk_level": "low",
       "cve_id": "CVE-2023-36824",
@@ -282,7 +282,7 @@
     },
     {
       "asset_id": "asset-003",
-      "asset_name": "PostgreSQL Primary Database",
+      "asset_name": "PostgreSQL",
       "exposure": "restricted",
       "risk_level": "high",
       "cve_id": "CVE-2023-5868",
@@ -302,7 +302,7 @@
       "asset_id": "asset-007",
       "asset_name": "fw-edge-perimeter-01",
       "exposure": "public_internet",
-      "risk_level": "high",
+      "risk_level": "critical",
       "cve_id": "CWE-284",
       "vulnerability": "Improper Access Control: SSH management port 22 exposed to 0.0.0.0/0",
       "status": "active"
