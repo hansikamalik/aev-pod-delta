@@ -13,8 +13,8 @@
 services:
   python-sdk:
     build:
-      context: ./python
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: connector_sandbox/python/Dockerfile
     image: connector-sdk-python:local
 
   ts-sdk:

@@ -165,7 +165,7 @@ Run with `npm test` (and `npm run typecheck`) from `ts/`.
 - `MockApiServer` serves fixed JSON per route. It cannot return errors or delays, ignores the HTTP
   method and headers, and returns 404 for any URL with a query string. Keep connector tests to
   query-free `GET` routes for now.
-- `MOCK_CREDENTIALS` currently uses `apiKey`; your connector's credential key should be `api_key`.
+- Use `api_key` for the credential key, matching the current mock credentials and connector contract.
   Map it in your test factory until the mock data is updated.
 - The contract checks are shallow (types only). They will not catch a wrong `describeConfig()` shape,
   so assert that yourself.

@@ -29,7 +29,7 @@ runContractSuite(() => {
   // TODO 2: instantiate your connector against the mock server
   // return new MyNewConnector({
   //   baseUrl: server.baseUrl,
-  //   apiKey: MOCK_CREDENTIALS.api_key,
+  //   api_Key: MOCK_CREDENTIALS.api_key,
   // });
   throw new Error("Wire up your connector in the factory passed to runContractSuite()");
 });
