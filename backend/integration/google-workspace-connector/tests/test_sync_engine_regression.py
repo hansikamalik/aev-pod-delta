@@ -133,15 +133,6 @@ def build_fetch(connector, config):
         return [event async for event in connector.ingest(config)]
     return fetch
     
-@pytest.mark.asyncio
-async def test_google_workspace_initial_sync(google_connector):
-    platform = FakePlatformClient()
-
-    engine = HardenedSyncEngine(
-        "google_workspace",
-        platform,
-        retry_base_delay_seconds=0,
-    )
 
     fetch = build_fetch(google_connector, config)
 
