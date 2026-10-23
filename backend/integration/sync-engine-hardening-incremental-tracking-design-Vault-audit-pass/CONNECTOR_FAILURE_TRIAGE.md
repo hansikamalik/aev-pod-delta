@@ -86,3 +86,22 @@ monitoring, or recovery problems to the relevant connector or sync-engine owner.
 Do not mark a connector fully regression-approved until its required regression
 tests pass and the results are recorded. Record formal DR and credential-rotation
 sign-offs separately.
+
+## Disaster Recovery (DR) Test Status
+
+- **Engine restart simulation:** PASSED.
+- **Checkpoint recovery:** Verified using a newly created sync-engine instance and the same mock platform client.
+- **Checkpoint resumption:** The test confirmed that the next incremental sync starts from the saved checkpoint when the lookback buffer is zero.
+- **Real Integration service restart:** PENDING.
+- **Production checkpoint durability:** NOT VERIFIED.
+- **Distributed lock recovery:** NOT VERIFIED.
+
+The passing test validates simulated engine recreation only. It does not establish that sync jobs resume successfully after a real Integration service outage.
+
+### Remaining DR Actions
+
+1. Stop or simulate the failure of the Integration service in a controlled test environment.
+2. Restart the service and verify that sync jobs resume from their saved checkpoints.
+3. Confirm that events are not lost or incorrectly duplicated.
+4. Record logs, checkpoint values, and test results.
+5. Obtain sign-off after the actual DR test passes.
