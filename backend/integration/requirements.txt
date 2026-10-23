@@ -15,3 +15,8 @@ requests
 ./active-directory-connector
 ./microsoft365-connector
 ./microsoft-defender-connector
+# Local relative path dependency for Google Workspace Auth
+./google-workspace-auth
+
+# Missing API client dependency
+googleapiclient
