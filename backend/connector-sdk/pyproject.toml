@@ -1,0 +1,18 @@
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "connector-sdk"
+version = "0.1.0"
+description = "Shared Python Connector SDK"
+readme = "connector_sdk/README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["connector_sdk", "connector_sdk.*"]

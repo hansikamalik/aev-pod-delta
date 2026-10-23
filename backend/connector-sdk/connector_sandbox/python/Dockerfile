@@ -31,8 +31,8 @@ COPY connector_sdk ./connector_sdk
 # for the whole sandbox; only pydantic is actually imported by connector_sdk
 # itself -- the others belong to the mock server, not the SDK).
 RUN pip install .
+COPY connector_sandbox/python/scripts/run_sample.py ./scripts/run_sample.py
 
-COPY scripts/run_sample.py ./scripts/run_sample.py
 
 # Runs as a non-root user, standard container hygiene.
 RUN useradd --create-home --uid 1000 sdk

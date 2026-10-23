@@ -1,7 +1,8 @@
 # Registration Endpoint: Security
 
 Applies to `POST /connectors/custom` (`python/registration/`). Read this with
-[REGISTRATION_READINESS.md](REGISTRATION_READINESS.md) and [KNOWN_GAPS.md](KNOWN_GAPS.md).
+[REGISTRATION_READINESS.md](REGISTRATION_READINESS.md) and the
+[main sandbox known-gaps document](../KNOWN_GAPS.md).
 
 ## Status at a glance
 
@@ -116,8 +117,9 @@ Until those exist, say so plainly: registration succeeds, but the connector is *
 
 ## Not implemented: authentication, limits, persistence
 
-Nothing identifies who is registering a connector, limits how often, or caps the request body. The store is
-in memory. These are tracked as gaps 14 and 15 in [KNOWN_GAPS.md](KNOWN_GAPS.md).
+Nothing identifies who is registering a connector, limits how often, or caps
+the request body. The store is in memory. These outstanding items are tracked
+in the [main sandbox known-gaps document](../KNOWN_GAPS.md).
 
 ## Decisions needed
 
@@ -130,14 +132,21 @@ in memory. These are tracked as gaps 14 and 15 in [KNOWN_GAPS.md](KNOWN_GAPS.md)
 | 5 | May a registered image be run before `scan_status` is `passed`? | The code does not run anything; downstream must decide, and should say no |
 
 ## Verification status
+The registration security test suites were executed successfully on Windows using Python 3.12.7 and pytest 9.1.1.
 
-- `test_image_policy.py` (93 cases) and `test_schema_rules.py` (17 cases) cover the logic above, including
-  a seeded fuzz of the parser. They ran green, and were mutation-checked: removing the allowlist, URL,
-  pinning, link-local, first-answer-only DNS, required-subset and property-type rules each makes tests
-  fail. Removing only the IP-literal branch does not, because a second rule in the parser rejects the same
-  inputs with the same code; that overlap is deliberate.
-- `test_registration.py` (21 test functions) covers the same rules through HTTP, plus scan status via
-  dependency overrides. **It has not been run**: it needs FastAPI and pydantic, which were unavailable where
-  it was written. Its 42 payload expectations were replayed through the real policy and schema modules and
-  all match, but the HTTP wiring (`schemas.py`, `app.py`) is checked only by compilation and reading.
-  Run `pytest tests/ -v` before relying on it.
+Command:
+
+```powershell
+python -m pytest `
+  .\connector_sandbox\python\tests\test_image_policy.py `
+  .\connector_sandbox\python\tests\test_schema_rules.py `
+  .\connector_sandbox\python\tests\test_registration.py -v
+```
+
+**Result: 158 passed in 0.78 seconds.**
+
+Coverage includes image-reference parsing, registry allowlisting, image pinning, public-address validation, schema validation, registration endpoint behavior, and scan-status handling.
+
+The complete Python sandbox test suite also passed separately: **200 passed in 21.01 seconds**.
+
+These results verify the tested behavior only. They do not mean that image-scanning infrastructure, runtime sandboxing, authentication, authorization, rate limiting, request-size limits, or persistent storage have been implemented. `resolve_public()` is tested, but the security guidance for future network-fetching code still needs to be followed if that functionality is introduced.
