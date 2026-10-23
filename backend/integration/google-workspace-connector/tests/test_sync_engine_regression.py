@@ -8,7 +8,6 @@ from google_workspace_connector.connector import GoogleWorkspaceConnector
 from google_workspace_connector.state import InMemorySyncStateStore
 
 from sync_engine.engine import HardenedSyncEngine
-from sync_engine.models import Checkpoint
 
 
 class FakeAuth:
@@ -40,10 +39,6 @@ class FakeActivities:
 class FakeReports:
     def __init__(self, events):
         self.events = events
-
-    def activities(self):
-        return FakeActivities(self.events)
-        self._events = events
 
     def activities(self):
         return FakeActivities(self._events)
@@ -114,9 +109,6 @@ def make_event(
 @pytest.fixture
 def google_connector(config):
     events = [make_event()]
-    events = [
-        make_event(),
-    ]
 
     def client_factory(credentials):
         return FakeClients(credentials, events)
@@ -133,14 +125,8 @@ def build_fetch(connector, config):
         return [event async for event in connector.ingest(config)]
     return fetch
 
-
 @pytest.mark.asyncio
-async def test_google_workspace_initial_sync(
-    google_connector,
-    config,
-):
-@pytest.mark.asyncio
-async def test_google_workspace_initial_sync(google_connector):
+async def test_google_workspace_initial_sync(google_connector, config):
     platform = FakePlatformClient()
 
     engine = HardenedSyncEngine(
@@ -152,7 +138,13 @@ async def test_google_workspace_initial_sync(google_connector):
     fetch = build_fetch(google_connector, config)
 
     result = await engine.execute_incremental_sync(fetch)
-    print("RESULT:", result)
+
+    assert result.status == "success"
+    assert result.assets_discovered == 1
+    assert result.assets_pushed == 1
+    assert len(platform.pushed_assets) == 1
+    assert platform.checkpoint is not None
+
     async def fetch():
         return [
             event
@@ -201,6 +193,18 @@ async def test_google_workspace_second_sync_is_idempotent(
     )
 
     fetch = build_fetch(google_connector, config)
+
+    first = await engine.execute_incremental_sync(fetch)
+
+    assert first.status == "success"
+    assert first.assets_pushed == 1
+
+    second = await engine.execute_incremental_sync(fetch)
+
+    assert second.status == "success"
+    assert second.assets_pushed == 0
+    assert second.assets_skipped == 1
+    assert len(platform.pushed_assets) == 1
     async def fetch():
         return [
             event
@@ -242,9 +246,6 @@ async def test_google_workspace_new_event_is_pushed_incrementally(
     config,
 ):
     events = [make_event()]
-    events = [
-        make_event(),
-    ]
 
     def client_factory(credentials):
         return FakeClients(credentials, events)
@@ -268,6 +269,20 @@ async def test_google_workspace_new_event_is_pushed_incrementally(
     first = await engine.execute_incremental_sync(fetch)
 
     assert first.status == "success"
+    assert first.assets_pushed == 1
+
+    events.append(
+        make_event(
+            event_time="2026-01-01T01:00:00Z",
+            email="bob@example.com",
+        )
+    )
+
+    second = await engine.execute_incremental_sync(fetch)
+
+    assert second.status == "success"
+    assert second.assets_pushed == 1
+    assert len(platform.pushed_assets) == 2
     async def fetch():
         return [
             event

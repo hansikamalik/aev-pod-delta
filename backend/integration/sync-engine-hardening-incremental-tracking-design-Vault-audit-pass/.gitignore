@@ -1,0 +1,7 @@
+
+# Local editor settings
+.vscode/
+
+# Local sync-engine backups
+sync_engine/engine.py.backup
+sync_engine/engine.py.broken-backup

@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict, model_validator
-from sync_engine.vault_audit import SENSITIVE_AUDIT_KEYS
 
 
 class HealthCheckResult(BaseModel):
@@ -53,6 +52,14 @@ class Asset(BaseModel):
     raw: Dict[str, Any] = Field(default_factory=dict)
     timestamp: Optional[datetime] = Field(default=None, alias="ts")
 
+    @property
+    def id(self) -> str:
+        return self.asset_id
+
+    @property
+    def ts(self) -> Optional[datetime]:
+        return self.timestamp
+
     @model_validator(mode="before")
     @classmethod
     def accept_asset_fields(cls, data: Any) -> Any:
@@ -66,6 +73,7 @@ class Asset(BaseModel):
                 data["ts"] = data["timestamp"]
             elif "ts" in data and "timestamp" not in data:
                 data["timestamp"] = data["ts"]
+
         return data
 
 

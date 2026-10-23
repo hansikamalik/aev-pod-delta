@@ -51,9 +51,10 @@ def m365_connector():
     Create the Microsoft 365 connector using the same configuration
     used by the connector's existing test suite.
     """
-    vault = VaultClient()
+    config = sample_config()
+    vault = VaultClient(addr=config.vault_addr)
     connector = Microsoft365Connector(
-        sample_config(),
+        config,
         vault_client=vault,
     )
     return connector
