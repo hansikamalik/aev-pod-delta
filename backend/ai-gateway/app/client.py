@@ -171,21 +171,31 @@ def _ask_gemma(question: str) -> Dict[str, Any]:
     from google import genai
 
     client = genai.Client(api_key=GOOGLE_API_KEY)
-    response = client.models.generate_content(
-        model=GOOGLE_MODEL,
-        contents=question,
-    )
 
-    text = getattr(response, "text", None)
-    if not text:
-        raise RuntimeError("Google Gemma returned an empty response.")
+    # Try configured Gemma model (gemma-4-31b-it), with graceful resilience to
+    # the sister Gemma model (gemma-4-26b-a4b-it) if Google's server returns 500.
+    candidates = [GOOGLE_MODEL, f"models/{GOOGLE_MODEL}", "models/gemma-4-26b-a4b-it"]
+    last_exc = None
 
-    usage = _extract_usage(response)
-    return _build_result(
-        answer=text.strip(),
-        model=GOOGLE_MODEL,
-        usage=usage,
-    )
+    for model_name in candidates:
+        try:
+            response = client.models.generate_content(
+                model=model_name,
+                contents=question,
+            )
+            text = getattr(response, "text", None)
+            if text:
+                usage = _extract_usage(response)
+                return _build_result(
+                    answer=text.strip(),
+                    model=model_name.replace("models/", ""),
+                    usage=usage,
+                )
+        except Exception as exc:
+            last_exc = exc
+            continue
+
+    raise last_exc or RuntimeError("Google Gemma returned an empty response.")
 
 
 def ask_gpt(question: str) -> Dict[str, Any]:

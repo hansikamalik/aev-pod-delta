@@ -36,7 +36,7 @@ for p in [GATEWAY_PATH, SDK_PATH, JIRA_PATH]:
         sys.path.insert(0, p)
 
 # Set database environment fallback for live local execution
-os.environ.setdefault("DATABASE_URL", "postgresql://mock:mock@localhost:5432/mockdb")
+os.environ.setdefault("DATABASE_URL", "postgresql://aev:secret@localhost:5432/aevdb")
 
 # Import Real Components from the Codebase
 from connector_sdk.models import Asset, AssetType, SyncResult, SyncStatus
