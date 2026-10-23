@@ -306,15 +306,17 @@ class Guardrails:
             text,
         )
 
-        # 4. International & Standard Phone Numbers (10-15 digits)
+        # 4. International & Standard Phone Numbers (7-15 digits, with formatting)
+        # Requires an international + prefix or a parenthesised area code to avoid
+        # false-positives on bare numeric IDs like order numbers (e.g. 123-456-7890).
         text = re.sub(
             (
-                r"(?:\+\d{1,3}[-.\s]?(?:\(\d{2,5}\)[-.\s]?)?"
-                r"|\(\d{2,5}\)[-.\s]?)\d{3,5}[-.\s]?\d{3,5}\b"
+                r"(?:\+\d{1,3}[\s\-.]?)(?:\(\d{1,4}\)[\s\-.]?)?[\d][\d\s\-.]{3,14}[\d]"
+                r"|\(\d{2,4}\)[\s\-.]?\d{3,5}[\s\-.]?\d{3,5}"
             ),
             lambda match: (
                 "[REDACTED_PHONE]"
-                if 10 <= len(re.sub(r"\D", "", match.group())) <= 15
+                if 7 <= len(re.sub(r"\D", "", match.group())) <= 15
                 else match.group()
             ),
             text,
