@@ -124,3 +124,32 @@ The passing test validates simulated engine recreation only. It does not establi
 **Current evidence:** Formal credential rotation sign-off has not yet been confirmed in the available project records.
 
 **Important:** This item remains pending until the rotation test has been executed, its results documented, and the responsible person has approved the outcome. Passing regression tests alone does not prove that credential rotation has passed.
+
+## Final Regression Status
+
+### Verified Passing Tests
+- Monitoring health regression tests: PASSED.
+- Full regression test suite: PASSED.
+- Vault audit tests: PASSED.
+- Sync-engine tests: PASSED, including the simulated restart recovery test.
+
+### Outstanding Connector Regression Issues
+- Google Workspace: Six regression test failures remain unresolved.
+- Microsoft 365: The previously recorded run had 21 passed, 3 failed, and 2 errors. The coroutine/high-water-mark issue and missing VaultClient  argument remain unresolved.
+
+### Disaster Recovery
+- Simulated sync-engine restart and recovery test: PASSED.
+- Actual Integration service outage and restart test: PENDING.
+- Durable production checkpoint recovery and distributed-lock recovery: NOT VERIFIED.
+
+### Credential Rotation
+- Formal sign-off owner: Harshal Sahare.
+- Status: PENDING FORMAL SIGN-OFF.
+- Credential rotation testing and approval must be documented before this item is marked complete.
+
+### Go-Live Readiness
+**Status: NOT YET FULLY VERIFIED.**
+
+The supporting tests pass, but outstanding connector failures, the real-service disaster recovery test, and formal credential rotation sign-off must be addressed or explicitly accepted by the responsible project owners before go-live readiness can be confirmed.
+
+These results do not establish that all 21 connectors have passed regression.
