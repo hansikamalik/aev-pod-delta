@@ -51,9 +51,9 @@ jobs:
           run_suite "backend/integration/connector-gitlab" tests
           run_suite "backend/integration/connector-microsoft-sentinel" tests
           run_suite "backend/integration/connector-sentinelone" tests
-          run_suite "backend/integration/google-workspace-connector" tests
-          run_suite "backend/integration/microsoft365-connector" tests
-          run_suite "backend/integration/servicenow-connector" tests
+          run_suite "backend/integration/google_workspace_connector" tests
+          run_suite "backend/integration/microsoft365_connector" tests
+          run_suite "backend/integration/servicenow_connector" tests
           run_suite "backend/integration/okta_connector" tests
           run_suite "backend/integration/qradar_connector" tests
 
@@ -70,9 +70,9 @@ jobs:
         run: python -m pytest -v tests
 
       - name: Run CyberArk integration tests
-        working-directory: backend/integration/cyberark-discovery-integration
+        working-directory: backend/integration/cyberark_discovery_integration
         env:
-          PYTHONPATH: ${{ github.workspace }}/backend/integration/cyberark-discovery-integration
+          PYTHONPATH: ${{ github.workspace }}/backend/integration/cyberark_discovery_integration
         run: python -m pytest -v tests
 
       - name: Run integration QA tests

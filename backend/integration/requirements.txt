@@ -10,13 +10,13 @@ pydantic>=2
 hvac
 requests
 # Local repository packages
-./google-workspace-auth
-./google-workspace-connector
-./active-directory-connector
-./microsoft365-connector
-./microsoft-defender-connector
+./google_workspace_auth
+./google_workspace_connector
+./active_directory_connector
+./microsoft365_connector
+./microsoft_defender_connector
 # Local relative path dependency for Google Workspace Auth
-./google-workspace-auth
+./google_workspace_auth
 
 # Missing API client dependency
 googleapiclient

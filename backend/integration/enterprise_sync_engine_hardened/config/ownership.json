@@ -14,15 +14,15 @@
     },
     "itsm_and_webhooks": {
       "owner": "Team Platform",
-      "connectors": ["servicenow-connector", "aev-connector-webhook", "connector-microsoft-sentinel"]
+      "connectors": ["servicenow_connector", "aev-connector-webhook", "connector-microsoft-sentinel"]
     },
     "pam_and_secrets": {
       "owner": "Team PAM",
-      "connectors": ["cyberark-discovery-integration", "cyberark_auth_module", "vault-enterprise-framework"]
+      "connectors": ["cyberark_discovery_integration", "cyberark_auth_module", "vault-enterprise-framework"]
     },
     "productivity_workspace": {
       "owner": "Team Workspace",
-      "connectors": ["google-workspace-connector", "google-workspace-auth", "microsoft365-connector"]
+      "connectors": ["google_workspace_connector", "google_workspace_auth", "microsoft365_connector"]
     },
     "extras_and_cloud": {
       "owner": "Team Cloud Integrations",
