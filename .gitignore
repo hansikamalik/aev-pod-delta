@@ -234,3 +234,4 @@ vault_keys*.txt
 
 # Node.js dependencies
 node_modules/
+.kiro/
