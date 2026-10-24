@@ -183,92 +183,64 @@ def query(
     tool_call = None
     citations: List[Any] = []
 
-    # Dispatch the risk-score tool when an asset ID is mentioned.
-    match = ASSET_ID_PATTERN.search(sanitized_question)
+    # Dynamic Tool Reasoning & Routing
+    from app.tool_router import resolve_dynamic_tool_intent, get_gemini_tools
 
-    if match:
-        if not is_allowed(x_user_role, "risk_score_get"):
+    tool_intent = resolve_dynamic_tool_intent(sanitized_question)
+
+    if tool_intent is not None:
+        target_tool, tool_args = tool_intent
+
+        if not is_allowed(x_user_role, target_tool):
             raise HTTPException(
                 status_code=403,
                 detail={
                     "error": "Permission denied",
                     "reason": (
                         f"Role '{x_user_role}' is not permitted "
-                        "to use 'risk_score_get'."
+                        f"to use '{target_tool}'."
                     ),
                 },
             )
 
-        asset_id = match.group(0).lower()
-
         tool_call = dispatch_tool(
-            "risk_score_get",
-            {"asset_id": asset_id},
+            target_tool,
+            tool_args,
             user_id=x_user_id,
             role=x_user_role,
         )
 
-        if isinstance(tool_call, dict) and tool_call.get("ok"):
-            tool_result = tool_call.get("result")
-
-            # Collect citations from the dispatcher response.
+        if isinstance(tool_call, dict):
             _add_citations(citations, tool_call.get("citations", []))
 
-            # Also collect citations from the tool result.
-            if isinstance(tool_result, dict):
-                _add_citations(
-                    citations,
-                    tool_result.get("citations", []),
+            if tool_call.get("ok"):
+                tool_result = tool_call.get("result")
+
+                if isinstance(tool_result, dict):
+                    _add_citations(
+                        citations,
+                        tool_result.get("citations", []),
+                    )
+
+                if target_tool == "risk_score_get":
+                    asset_id = tool_args.get("asset_id", "")
+                    _ensure_risk_score_citation(citations, asset_id)
+
+                question_for_model = (
+                    f"{sanitized_question}\n\n"
+                    f"Verified data from the {target_tool} tool follows. "
+                    "Use this data as context for your answer:\n"
+                    f"{json.dumps(tool_result, default=str)}"
                 )
 
-            # Ensure a successful risk-score result has a citation.
-            _ensure_risk_score_citation(citations, asset_id)
-
-            question_for_model = (
-                f"{sanitized_question}\n\n"
-                "Verified data from the risk_score_get tool follows. "
-                "Use this data as context for your answer:\n"
-                f"{json.dumps(tool_result, default=str)}"
-            )
-    elif any(kw in sanitized_question.lower() for kw in ["exposure", "vulnerabilit", "cve"]) and is_allowed(x_user_role, "exposure_query"):
-        tool_call = dispatch_tool(
-            "exposure_query",
-            {},
-            user_id=x_user_id,
-            role=x_user_role,
-        )
-        if isinstance(tool_call, dict) and tool_call.get("ok"):
-            tool_result = tool_call.get("result")
-            _add_citations(citations, tool_call.get("citations", []))
-            if isinstance(tool_result, dict):
-                _add_citations(citations, tool_result.get("citations", []))
-            question_for_model = (
-                f"{sanitized_question}\n\n"
-                "Verified data from the exposure_query tool follows. "
-                "Use this data as context for your answer:\n"
-                f"{json.dumps(tool_result, default=str)}"
-            )
-    elif any(kw in sanitized_question.lower() for kw in ["integration", "connected tool"]) and is_allowed(x_user_role, "integration_list"):
-        tool_call = dispatch_tool(
-            "integration_list",
-            {},
-            user_id=x_user_id,
-            role=x_user_role,
-        )
-        if isinstance(tool_call, dict) and tool_call.get("ok"):
-            tool_result = tool_call.get("result")
-            _add_citations(citations, tool_call.get("citations", []))
-            if isinstance(tool_result, dict):
-                _add_citations(citations, tool_result.get("citations", []))
-            question_for_model = (
-                f"{sanitized_question}\n\n"
-                "Verified data from the integration_list tool follows. "
-                "Use this data as context for your answer:\n"
-                f"{json.dumps(tool_result, default=str)}"
-            )
-
     try:
-        result = ask_gpt(question_for_model)
+        import inspect
+        sig = inspect.signature(ask_gpt)
+        if "tools" in sig.parameters or any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
+            tools_decl = [get_gemini_tools()] if get_gemini_tools() else None
+            result = ask_gpt(question_for_model, tools=tools_decl)
+        else:
+            result = ask_gpt(question_for_model)
     except Exception as exc:
         logger.error(f"Upstream model execution failed: {exc}", exc_info=True)
         raise HTTPException(

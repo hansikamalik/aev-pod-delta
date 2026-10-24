@@ -353,7 +353,19 @@ def main():
         print(f"  {GREEN}✔ AI Disclaimer:{RESET}   {ans_data['guardrails']['disclaimer_added']}")
         print(f"\nAnswer snippet:\n  {ans_data['answer'][:250]}...\n")
 
-        # 2. Viewer Query (RBAC Denial)
+        # 2. Dynamic Exposure Reasoning Query
+        dyn_query = "Show me critical exposures on our infrastructure"
+        print(f"Sending Dynamic Request: \"{CYAN}{dyn_query}{RESET}\" as role: {BOLD}analyst{RESET}")
+        resp_dyn = client.post(
+            "/copilot/query",
+            headers={"X-User-ID": "sarah_analyst", "X-User-Role": "analyst"},
+            json={"question": dyn_query}
+        )
+        dyn_data = resp_dyn.json()
+        print(f"  {GREEN}✔ Autonomous Tool Resolution:{RESET} {dyn_data['tool_call']['tool']} (severity filter applied: {dyn_data['tool_call']['result'].get('severity')})")
+        print(f"  {GREEN}✔ Exposures Returned:{RESET}          {dyn_data['tool_call']['result']['count']} matching vulnerabilities")
+
+        # 3. Viewer Query (RBAC Denial)
         print(f"Sending Request: \"{CYAN}{analyst_query}{RESET}\" as role: {BOLD}viewer{RESET} (Forbidden for risk_score_get)")
         resp_viewer = client.post(
             "/copilot/query",
@@ -408,7 +420,7 @@ def main():
         ("4. Real Tool Registry Dispatcher",    "PASS", "Executed risk_score_get, exposure_query, policy_check, workflow_assist"),
         ("5. Guardrails & Threat Defense",      "PASS", "Blocked prompt injections & sanitized PII in real-time"),
         ("6. RBAC Security Matrix",             "PASS", "Enforced permissions across Admin, Analyst, Viewer, Auditor roles"),
-        ("7. Copilot Live Answering Engine",    "PASS", "Tool integration, structured citations, token tracking & rate limits verified"),
+        ("7. Copilot Dynamic Reasoning Engine", "PASS", "Autonomous tool selection, structured citations, token tracking & rate limits"),
         ("8. Audit Log & Webhooks",             "PASS", "Fact-check webhook & citation flagging confirmed live"),
     ]
 

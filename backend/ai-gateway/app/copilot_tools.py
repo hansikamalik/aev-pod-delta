@@ -64,6 +64,14 @@ def workflow_assist(
         return {
             "workflows": list(WORKFLOWS.values()),
             "count": len(WORKFLOWS),
+            "citations": [
+                {
+                    "id": "cit-workflows-all",
+                    "type": "reference",
+                    "id_ref": "all_workflows",
+                    "url": "/workflows",
+                }
+            ],
         }
 
     if action == "describe":
@@ -74,7 +82,17 @@ def workflow_assist(
         if workflow is None:
             raise ValueError(f"Unknown workflow_id: {workflow_id}")
 
-        return {"workflow": workflow}
+        return {
+            "workflow": workflow,
+            "citations": [
+                {
+                    "id": f"cit-workflow-{workflow_id}",
+                    "type": "reference",
+                    "id_ref": workflow_id,
+                    "url": f"/workflows/{workflow_id}",
+                }
+            ],
+        }
 
     if action == "run":
         if not workflow_id:
@@ -96,15 +114,25 @@ def workflow_assist(
                 f"Missing required workflow parameters: {', '.join(missing)}"
             )
 
+        wf_citation = {
+            "id": f"cit-workflow-{workflow_id}",
+            "type": "reference",
+            "id_ref": workflow_id,
+            "url": f"/workflows/{workflow_id}",
+        }
+
         if dry_run:
             return {
                 "status": "dry_run",
                 "workflow_id": workflow_id,
                 "params": run_params,
                 "started_by": user_id,
+                "citations": [wf_citation],
             }
 
-        return _start_workflow_run(workflow_id, run_params, user_id)
+        res = _start_workflow_run(workflow_id, run_params, user_id)
+        res["citations"] = [wf_citation]
+        return res
 
     raise ValueError(f"Unsupported workflow action: {action}")
 
@@ -281,4 +309,12 @@ def integration_list(
     return {
         "count": len(integrations),
         "integrations": integrations,
+        "citations": [
+            {
+                "id": "cit-integrations",
+                "type": "reference",
+                "id_ref": "integrations_catalog",
+                "url": "/api/v1/integrations",
+            }
+        ],
     }
