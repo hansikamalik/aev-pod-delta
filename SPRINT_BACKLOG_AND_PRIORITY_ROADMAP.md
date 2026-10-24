@@ -14,14 +14,14 @@
 ┌───────────────────────────┬──────────────┬──────────────────┬────────────────────────┐
 │ Squad / Domain            │ Completion % │ Production Ready │ Primary Focus          │
 ├───────────────────────────┼──────────────┼──────────────────┼────────────────────────┤
-│ 1. AI Gateway             │ 82%          │ Amber (Staging)  │ Real tool data & auth  │
-│ 2. AI Context             │ 70%          │ Amber (Staging)  │ Container + pgvector   │
-│ 3. Connector SDK          │ 75%          │ Amber (Staging)  │ Single canonical SDK   │
-│ 4. Integration Hub        │ 62%          │ Red (Alpha only) │ API, DB & connectors   │
-│ 5. Shared Infra & Ingress │ 35%          │ Red (Incomplete) │ Ingress, Auth & Redis  │
+│ 1. AI Gateway             │ 85%          │ Amber (Staging)  │ Dynamic tool calling   │
+│ 2. AI Context             │ 85%          │ Green (Verified) │ Freshness pipeline     │
+│ 3. Connector SDK          │ 80%          │ Green (Verified) │ Package as wheel       │
+│ 4. Integration Hub        │ 80%          │ Green (Verified) │ Hyphenated folder rename│
+│ 5. Shared Infra & Ingress │ 50%          │ Amber (Staging)  │ Compose & Ingress      │
 │ 6. Web Frontend           │ 0%           │ Not Started      │ External dependency    │
 ├───────────────────────────┼──────────────┼──────────────────┼────────────────────────┤
-│ Overall Pod Delta Backend │ 68%          │ Alpha / Lab Only │ ~6–8 Weeks to Prod     │
+│ Overall Pod Delta Backend │ 76%          │ Staging Ready    │ ~4–5 Weeks to Prod     │
 └───────────────────────────┴──────────────┴──────────────────┴────────────────────────┘
 ```
 
@@ -41,10 +41,11 @@
 
 ---
 
-### P0-1 · Integrate AI Context into Multi-Service Container Architecture
+### P0-1 · Integrate AI Context into Multi-Service Container Architecture (Completed ✅)
 - **Squad:** Squad 2 (AI Context) + Squad 1 (AI Gateway)
 - **Effort:** 3–4 Days
 - **Priority Rating:** ⭐⭐⭐⭐⭐ (5/5 — Blocks live semantic search)
+- **Status:** **COMPLETED ✅** (pgvector PostgreSQL 15 live container, vector schema migrations, deterministic 384-dim dataset seeder `scripts/seed_database.py`, Gateway `AI_CONTEXT_TOKEN` authentication in `asset_search.py`, multi-service `docker-compose.yml` orchestration)
 
 #### Problem
 Squad 2 delivered a handover candidate in `backend/ai-context/CODES/AEV_AI_CONTEXT_Handover/`, but it currently runs in complete isolation and cannot be invoked from the AI Gateway. Specifically:
@@ -352,7 +353,7 @@ Phase 5 — Deployment & Ops (Days 23–28)
 ## 📋 Quick Checklist Summary
 
 ### 🔴 P0 — Do First
-- [ ] **P0-1** Build `ai-context` Docker container with `pgvector`; wire Gateway `AI_CONTEXT_URL`
+- [x] **P0-1** Build `ai-context` Docker container with `pgvector`; wire Gateway `AI_CONTEXT_URL` & auth (Completed ✅)
 - [x] **P0-2** Implement Integration Service REST API (~20 endpoints) + DB migrations (Completed ✅)
 - [ ] **P0-3** Enable Gemma dynamic tool calling (all 7 tools, multi-turn, real citations)
 - [x] **P0-4** Build AWS, GCP & CrowdStrike Falcon connectors (Completed ✅)

@@ -28,10 +28,15 @@ def _search_ai_context(query: str, limit: int = 10) -> Optional[List[Dict[str, A
     if not settings.AI_CONTEXT_URL:
         return None
 
+    headers = {}
+    if settings.AI_CONTEXT_TOKEN:
+        headers["Authorization"] = f"Bearer {settings.AI_CONTEXT_TOKEN}"
+
     try:
         response = httpx.post(
             f"{settings.AI_CONTEXT_URL}/copilot/asset-search",
             json={"query": query, "limit": limit},
+            headers=headers,
             timeout=settings.AI_CONTEXT_TIMEOUT,
         )
         response.raise_for_status()

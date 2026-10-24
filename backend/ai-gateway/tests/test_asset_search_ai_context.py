@@ -84,3 +84,18 @@ def test_passes_timeout_to_ai_context(monkeypatch):
 
     assert seen["timeout"] == 2.5
     assert seen["url"] == "http://ai-context/copilot/asset-search"
+
+
+def test_passes_bearer_token_when_configured(monkeypatch):
+    monkeypatch.setattr(settings, "AI_CONTEXT_URL", "http://ai-context")
+    monkeypatch.setattr(settings, "AI_CONTEXT_TOKEN", "test-secret-token-32-chars-minimum")
+    seen = {}
+
+    def fake_post(url, **kwargs):
+        seen.update(kwargs, url=url)
+        return _ok_response()
+
+    monkeypatch.setattr(asset_search_module.httpx, "post", fake_post)
+    asset_search("database", "u1")
+
+    assert seen["headers"].get("Authorization") == "Bearer test-secret-token-32-chars-minimum"
