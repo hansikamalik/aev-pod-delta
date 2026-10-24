@@ -353,9 +353,9 @@ Phase 5 — Deployment & Ops (Days 23–28)
 
 ### 🔴 P0 — Do First
 - [ ] **P0-1** Build `ai-context` Docker container with `pgvector`; wire Gateway `AI_CONTEXT_URL`
-- [ ] **P0-2** Implement Integration Service REST API (~20 endpoints) + DB migrations
+- [x] **P0-2** Implement Integration Service REST API (~20 endpoints) + DB migrations (Completed ✅)
 - [ ] **P0-3** Enable Gemma dynamic tool calling (all 7 tools, multi-turn, real citations)
-- [ ] **P0-4** Build AWS, GCP & CrowdStrike Falcon connectors
+- [x] **P0-4** Build AWS, GCP & CrowdStrike Falcon connectors (Completed ✅)
 - [ ] **P0-5** Rename hyphenated connector directories to valid Python package names
 
 ### 🟡 P1 — Do Second
