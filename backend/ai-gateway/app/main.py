@@ -6,8 +6,10 @@ import logging
 import re
 from typing import Any, List, Optional
 
-from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Query
+from fastapi import BackgroundTasks, Depends, FastAPI, Header, HTTPException, Query
 from pydantic import BaseModel, Field
+
+from app.jwt_auth import AuthenticatedUser, get_current_user
 
 # Import these modules to register their tools.
 from app import asset_search, exposure_query, mock_tools  # noqa: F401
@@ -120,17 +122,24 @@ async def health():
 @app.post("/copilot/query")
 def query(
     request: QueryRequest,
-    x_user_id: Optional[str] = Header(default="anonymous"),
-    x_org_tier: Optional[str] = Header(default="free"),
-    x_user_role: Optional[str] = Header(default="anonymous"),
+    user: AuthenticatedUser = Depends(get_current_user),
+    x_user_id: Optional[str] = Header(default=None),
+    x_org_tier: Optional[str] = Header(default=None),
+    x_user_role: Optional[str] = Header(default=None),
     x_org_id: Optional[str] = Header(default=None),
     x_budget_cap: Optional[float] = Header(default=None),
 ):
     """Process a Copilot query with guardrails, tools, and tracking."""
+    # Identity from cryptographic JWT takes precedence over unverified headers
+    eff_user_id = user.user_id if user.token_auth or not x_user_id else x_user_id
+    eff_user_role = user.role if user.token_auth or not x_user_role else x_user_role
+    eff_org_tier = user.org_tier if user.token_auth or not x_org_tier else x_org_tier
+    eff_org_id = user.tenant_id if user.token_auth or not x_org_id else x_org_id
+    eff_budget_cap = user.budget_cap if user.budget_cap is not None else x_budget_cap
 
     rate_info = check_rate_limit(
-        user_id=x_user_id,
-        org_tier=x_org_tier,
+        user_id=eff_user_id,
+        org_tier=eff_org_tier,
     )
 
     if not rate_info.get("allowed", False):
@@ -191,13 +200,13 @@ def query(
     if tool_intent is not None:
         target_tool, tool_args = tool_intent
 
-        if not is_allowed(x_user_role, target_tool):
+        if not is_allowed(eff_user_role, target_tool):
             raise HTTPException(
                 status_code=403,
                 detail={
                     "error": "Permission denied",
                     "reason": (
-                        f"Role '{x_user_role}' is not permitted "
+                        f"Role '{eff_user_role}' is not permitted "
                         f"to use '{target_tool}'."
                     ),
                 },
@@ -206,8 +215,8 @@ def query(
         tool_call = dispatch_tool(
             target_tool,
             tool_args,
-            user_id=x_user_id,
-            role=x_user_role,
+            user_id=eff_user_id,
+            role=eff_user_role,
         )
 
         if isinstance(tool_call, dict):
@@ -262,22 +271,21 @@ def query(
 
     usage = TokenTracker.extract_usage(result)
 
-    # Map request to organization: prefer X-Org-ID, else extract from user_id
-    # (e.g. user@org or user_org_X) or fallback to org_tier
-    effective_org = x_org_id
-    if not effective_org and x_user_id:
-        if "@" in x_user_id:
-            effective_org = x_user_id.split("@", 1)[1]
-        elif "_" in x_user_id and "org" in x_user_id:
-            effective_org = x_user_id.split("_", 1)[1]
+    # Map request to organization: prefer verified tenant/org, else user_id or org_tier
+    effective_org = eff_org_id
+    if not effective_org and eff_user_id:
+        if "@" in eff_user_id:
+            effective_org = eff_user_id.split("@", 1)[1]
+        elif "_" in eff_user_id and "org" in eff_user_id:
+            effective_org = eff_user_id.split("_", 1)[1]
     if not effective_org:
-        effective_org = x_org_tier or "default"
+        effective_org = eff_org_tier or "default"
 
     cost_info = CostTracker.calculate_cost(
         model=result.get("model", "unknown"),
         prompt_tokens=usage["prompt_tokens"],
         completion_tokens=usage["completion_tokens"],
-        budget_cap=x_budget_cap,
+        budget_cap=eff_budget_cap,
         org_id=effective_org,
     )
 
@@ -293,7 +301,7 @@ def query(
     citations = ensure_response_citation(citations, sanitized_question, safe_answer)
 
     interaction_id = log_interaction(
-        user_id=x_user_id,
+        user_id=eff_user_id,
         prompt=sanitized_question,
         response=safe_answer,
         tokens=usage["total_tokens"],
@@ -339,17 +347,19 @@ def get_audit_log(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     limit: int = Query(default=50, ge=1, le=500),
-    x_user_role: Optional[str] = Header(default="anonymous"),
+    user: AuthenticatedUser = Depends(get_current_user),
+    x_user_role: Optional[str] = Header(default=None),
 ):
     """Filter the ai_interactions audit log. Admin/auditor only."""
+    effective_role = user.role if user.token_auth or not x_user_role else x_user_role
 
-    if not is_allowed(x_user_role, "audit_query"):
+    if not is_allowed(effective_role, "audit_query"):
         raise HTTPException(
             status_code=403,
             detail={
                 "error": "Permission denied",
                 "reason": (
-                    f"Role '{x_user_role}' is not permitted "
+                    f"Role '{effective_role}' is not permitted "
                     "to read the audit log."
                 ),
             },
@@ -383,17 +393,21 @@ def fact_check_hook(payload: FactCheckRequest):
 @app.post("/copilot/citations/flag")
 def flag_citation_endpoint(
     payload: CitationFlagRequest,
-    x_user_id: Optional[str] = Header(default="anonymous"),
-    x_user_role: Optional[str] = Header(default="anonymous"),
+    user: AuthenticatedUser = Depends(get_current_user),
+    x_user_id: Optional[str] = Header(default=None),
+    x_user_role: Optional[str] = Header(default=None),
 ):
     """Record a user flag marking a citation as inaccurate."""
-    if not is_allowed(x_user_role, "citation_flag"):
+    effective_role = user.role if user.token_auth or not x_user_role else x_user_role
+    effective_user = user.user_id if user.token_auth or not x_user_id else x_user_id
+
+    if not is_allowed(effective_role, "citation_flag"):
         raise HTTPException(
             status_code=403,
             detail={
                 "error": "Permission denied",
                 "reason": (
-                    f"Role '{x_user_role}' is not permitted "
+                    f"Role '{effective_role}' is not permitted "
                     "to flag citations."
                 ),
             },
@@ -403,7 +417,7 @@ def flag_citation_endpoint(
         interaction_id=payload.interaction_id,
         citation_id=payload.citation_id,
         reason=payload.reason,
-        flagged_by=x_user_id or "anonymous",
+        flagged_by=effective_user or "anonymous",
     )
 
     return {
@@ -415,16 +429,19 @@ def flag_citation_endpoint(
 @app.post("/admin/retention-cleanup")
 def retention_cleanup(
     background_tasks: BackgroundTasks,
-    x_user_role: Optional[str] = Header(default="anonymous"),
+    user: AuthenticatedUser = Depends(get_current_user),
+    x_user_role: Optional[str] = Header(default=None),
 ):
     """Start expired-row cleanup in the background. Admin only."""
-    if x_user_role != "admin":
+    effective_role = user.role if user.token_auth or not x_user_role else x_user_role
+
+    if effective_role != "admin":
         raise HTTPException(
             status_code=403,
             detail={
                 "error": "Permission denied",
                 "reason": (
-                    f"Role '{x_user_role}' is not permitted "
+                    f"Role '{effective_role}' is not permitted "
                     "to run retention cleanup."
                 ),
             },

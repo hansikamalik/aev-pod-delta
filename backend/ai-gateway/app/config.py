@@ -15,5 +15,12 @@ class Settings:
     AI_CONTEXT_TIMEOUT = float(os.getenv("AI_CONTEXT_TIMEOUT", "3"))
     AI_CONTEXT_TOKEN = os.getenv("AI_CONTEXT_TOKEN", "").strip()
 
+    # JWT Cryptographic Trust Boundary (Pod Alpha -> Pod Delta)
+    JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "aev-pod-alpha-development-secret-key-32bytes-min")
+    JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+    JWT_ISSUER = os.getenv("JWT_ISSUER", "aev-pod-alpha")
+    JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "aev-pod-delta")
+    JWT_AUTH_REQUIRED = os.getenv("JWT_AUTH_REQUIRED", "false").lower() == "true"
+
 
 settings = Settings()

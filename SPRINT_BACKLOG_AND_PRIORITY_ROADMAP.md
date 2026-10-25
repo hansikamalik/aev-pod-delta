@@ -160,10 +160,11 @@ Several connector directories use hyphens in their names, which makes them inval
 
 ---
 
-### P1-1 · JWT Authentication Middleware & Cryptographic Trust Boundaries
+### P1-1 · JWT Authentication Middleware & Cryptographic Trust Boundaries (Completed ✅)
 - **Squad:** Squad 1 (AI Gateway) + Shared Infra
 - **Effort:** 2–3 Days
 - **Priority Rating:** ⭐⭐⭐⭐ (4/5 — Cannot launch in production without this)
+- **Status:** **COMPLETED ✅** (Added FastAPI JWT validation dependency `app/jwt_auth.py`, cryptographic claim extraction `user_id`/`role`/`tenant_id`/`org_tier`/`budget_cap`, strict trust boundary mode, header-spoofing defense, 12 unit tests, and `docs/AUTH_CONTRACT_POD_ALPHA.md` contract)
 
 #### Problem
 The AI Gateway trusts raw HTTP headers `X-User-ID` and `X-User-Role` completely. Any client that knows the header names can claim to be an admin.
