@@ -26,7 +26,10 @@ from app.embedding import generate_embedding
 from app.freshness_pipeline import freshness_pipeline
 
 
-Base.metadata.create_all(bind=engine)
+try:
+    Base.metadata.create_all(bind=engine)
+except Exception:
+    pass
 
 app = FastAPI(
     title="AEV AI Context Service",

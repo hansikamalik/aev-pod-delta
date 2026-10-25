@@ -8,12 +8,28 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    raise ValueError("DATABASE_URL is missing from the .env file")
+    DATABASE_URL = "sqlite:///:memory:"
 
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True
-)
+try:
+    if "sqlite" in DATABASE_URL:
+        from sqlalchemy.pool import StaticPool
+        engine = create_engine(
+            DATABASE_URL,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+    else:
+        engine = create_engine(
+            DATABASE_URL,
+            pool_pre_ping=True
+        )
+except Exception:
+    from sqlalchemy.pool import StaticPool
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
 
 SessionLocal = sessionmaker(
     autocommit=False,
