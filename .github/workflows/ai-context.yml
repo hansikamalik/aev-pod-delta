@@ -31,15 +31,11 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Install lightweight CI deps (torch/sentence-transformers excluded — tests use
-          # the deterministic fallback embedding defined in app/embedding.py)
-          pip install fastapi uvicorn pydantic python-dotenv httpx pytest pytest-asyncio \
-              sqlalchemy psycopg2-binary pgvector greenlet typing_extensions psycopg[binary]
+          pip install -r requirements.txt
 
       - name: Run tests
-        run: PYTHONPATH=. python -m pytest app/tests/ -v -o pythonpath=.
+        run: python -m pytest

@@ -4,12 +4,11 @@ sqlalchemy
 psycopg2-binary
 python-dotenv
 pgvector
-sentence-transformers
-transformers
-torch
 pydantic
 typing_extensions
 greenlet
 pytest
+pytest-asyncio
 httpx
 psycopg[binary]
+redis
