@@ -40,13 +40,10 @@ class FakeActivities:
 class FakeReports:
     def __init__(self, events):
         self.events = events
-
-    def activities(self):
-        return FakeActivities(self.events)
         self._events = events
 
     def activities(self):
-        return FakeActivities(self._events)
+        return FakeActivities(self.events)
 
 
 class FakeClients:
@@ -134,35 +131,15 @@ def build_fetch(connector, config):
     return fetch
     
 
+@pytest.mark.asyncio
+async def test_google_workspace_incremental_sync(google_connector, config):
+    platform = FakePlatformClient()
+    engine = HardenedSyncEngine(
+        "google_workspace",
+        platform,
+        retry_base_delay_seconds=0,
+    )
     fetch = build_fetch(google_connector, config)
-
-    result = await engine.execute_incremental_sync(fetch)
-    print("RESULT:", result)
-    async def fetch():
-        return [
-            event
-            async for event in google_connector.ingest(
-                {
-                    **{
-                        "customer_id": "my_customer",
-                        "domain": "example.com",
-                        "admin_user": "admin@example.com",
-                        "_credentials": {
-                            "service_account": {
-                                "client_email": "svc@example.com",
-                                "private_key_ref": "vault://google-workspace/service-account",
-                            }
-                        },
-                        "sync": {
-                            "users": False,
-                            "audit_logs": True,
-                            "audit_application": "login",
-                        },
-                    }
-                }
-            )
-        ]
-
     result = await engine.execute_incremental_sync(fetch)
 
     assert result.status == "success"

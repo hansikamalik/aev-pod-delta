@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import json
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
-from app.permissions import is_allowed
 from app.tools import TOOL_SCHEMAS, dispatch_tool
 
 ASSET_PATTERN = re.compile(r"\basset-[a-zA-Z0-9_-]+\b", re.IGNORECASE)
@@ -19,7 +17,10 @@ def _clean_schema_for_gemini(schema_dict: Dict[str, Any]) -> Dict[str, Any]:
     """Strip unsupported keys like additionalProperties for Google GenAI schema validator."""
     if not isinstance(schema_dict, dict):
         return schema_dict
-    clean = {k: v for k, v in schema_dict.items() if k not in ("additionalProperties", "additional_properties")}
+    clean = {
+        k: v for k, v in schema_dict.items()
+        if k not in ("additionalProperties", "additional_properties")
+    }
     if "properties" in clean and isinstance(clean["properties"], dict):
         clean["properties"] = {
             pk: _clean_schema_for_gemini(pv)
@@ -64,7 +65,9 @@ def resolve_dynamic_tool_intent(question: str) -> Optional[Tuple[str, Dict[str, 
     asset_id = asset_match.group(0).lower() if asset_match else None
 
     # 1. Report Generation Intent
-    if any(k in q_lower for k in ["generate report", "create report", "produce report", "export report", "security report for"]):
+    if any(k in q_lower for k in [
+        "generate report", "create report", "produce report", "export report", "security report for"
+    ]):
         if asset_id:
             rep_type_match = REPORT_TYPE_PATTERN.search(q_lower)
             rep_type = rep_type_match.group(1).lower() if rep_type_match else "security"
@@ -72,14 +75,20 @@ def resolve_dynamic_tool_intent(question: str) -> Optional[Tuple[str, Dict[str, 
 
     # 2. Risk Score Intent
     # Questions mentioning asset-XXX or asking about risk/posture of an asset
-    if asset_id and any(k in q_lower for k in ["risk", "score", "posture", "how risky", "threat level"]):
+    if asset_id and any(k in q_lower for k in [
+        "risk", "score", "posture", "how risky", "threat level"
+    ]):
         return "risk_score_get", {"asset_id": asset_id}
-    if asset_id and not any(k in q_lower for k in ["exposure", "vulnerabilit", "cve", "report", "rescan"]):
+    if asset_id and not any(k in q_lower for k in [
+        "exposure", "vulnerabilit", "cve", "report", "rescan"
+    ]):
         # Default behavior: when an asset ID is specified without other tools, inspect risk
         return "risk_score_get", {"asset_id": asset_id}
 
     # 3. Exposure & Vulnerability Intent
-    if any(k in q_lower for k in ["exposure", "vulnerabilit", "cve", "weakness", "flaw", "threat finding"]):
+    if any(k in q_lower for k in [
+        "exposure", "vulnerabilit", "cve", "weakness", "flaw", "threat finding"
+    ]):
         args: Dict[str, Any] = {}
         if asset_id:
             args["asset_id"] = asset_id
@@ -89,7 +98,9 @@ def resolve_dynamic_tool_intent(question: str) -> Optional[Tuple[str, Dict[str, 
         return "exposure_query", args
 
     # 4. Policy Check Intent
-    if any(k in q_lower for k in ["policy check", "check policy", "compliant", "compliance", "policy rule"]):
+    if any(k in q_lower for k in [
+        "policy check", "check policy", "compliant", "compliance", "policy rule"
+    ]):
         # Determine resource type and mock config from question context
         res_type = "storage_bucket"
         config = {"public_access": True, "encrypted": True}
@@ -108,11 +119,13 @@ def resolve_dynamic_tool_intent(question: str) -> Optional[Tuple[str, Dict[str, 
         return "policy_check", {"resource_type": res_type, "config": config}
 
     # 5. Workflow Assist Intent
-    if any(k in q_lower for k in ["workflow", "playbook", "remediat", "run workflow", "dry run", "isolate"]):
+    if any(k in q_lower for k in [
+        "workflow", "playbook", "remediat", "run workflow", "dry run", "isolate"
+    ]):
         action = "list"
         if "describe" in q_lower or "details" in q_lower:
             action = "describe"
-        elif "run" in q_lower or "start" in q_lower or "execute" in q_lower or "isolate" in q_lower:
+        elif any(w in q_lower for w in ["run", "start", "execute", "isolate"]):
             action = "run"
 
         wf_args: Dict[str, Any] = {"action": action}
@@ -121,11 +134,16 @@ def resolve_dynamic_tool_intent(question: str) -> Optional[Tuple[str, Dict[str, 
             wf_args["workflow_id"] = wf_id
             if action == "run":
                 wf_args["dry_run"] = "dry" in q_lower or "simulate" in q_lower
-                wf_args["params"] = {"host_id": "h-1"} if wf_id == "isolate_host" else {"asset_id": asset_id or "asset-001"}
+                if wf_id == "isolate_host":
+                    wf_args["params"] = {"host_id": "h-1"}
+                else:
+                    wf_args["params"] = {"asset_id": asset_id or "asset-001"}
         return "workflow_assist", wf_args
 
     # 6. Audit Query Intent
-    if any(k in q_lower for k in ["audit log", "audit query", "who queried", "interaction log", "audit trail"]):
+    if any(k in q_lower for k in [
+        "audit log", "audit query", "who queried", "interaction log", "audit trail"
+    ]):
         audit_args: Dict[str, Any] = {"since_days": 7, "limit": 10}
         actor_match = re.search(r"\buser[:\s]+([a-zA-Z0-9_-]+)", q_lower)
         if actor_match:
@@ -133,7 +151,9 @@ def resolve_dynamic_tool_intent(question: str) -> Optional[Tuple[str, Dict[str, 
         return "audit_query", audit_args
 
     # 7. Integration List Intent
-    if any(k in q_lower for k in ["integration", "connected tool", "connectors", "third party status", "active integrations"]):
+    if any(k in q_lower for k in [
+        "integration", "connected tool", "connectors", "third party status", "active integrations"
+    ]):
         stat_match = STATUS_PATTERN.search(q_lower)
         int_args: Dict[str, Any] = {}
         if stat_match:
@@ -141,8 +161,13 @@ def resolve_dynamic_tool_intent(question: str) -> Optional[Tuple[str, Dict[str, 
         return "integration_list", int_args
 
     # 8. Asset Search Intent
-    if any(k in q_lower for k in ["search asset", "find asset", "find server", "find bucket", "find database", "locate asset", "search for"]):
-        clean_query = re.sub(r"^(search (for|assets?)|find (assets?|servers?|buckets?)|locate)\s*", "", q_lower).strip()
+    search_keywords = [
+        "search asset", "find asset", "find server", "find bucket",
+        "find database", "locate asset", "search for"
+    ]
+    if any(k in q_lower for k in search_keywords):
+        pattern = r"^(search (for|assets?)|find (assets?|servers?|buckets?)|locate)\s*"
+        clean_query = re.sub(pattern, "", q_lower).strip()
         return "asset_search", {"query": clean_query or "all"}
 
     return None

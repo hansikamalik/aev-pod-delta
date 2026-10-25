@@ -10,7 +10,7 @@ from .exceptions import (
     SourceError,
     ValidationError,
 )
-from .models import Asset, AssetType, SyncResult, SyncStatus, utcnow
+from .models import Asset, AssetType, Checkpoint, SyncResult, SyncStatus, utcnow
 from .sample_connector import SampleConnector
 
 __version__ = "1.0.0"
@@ -20,6 +20,7 @@ __all__ = [
     "AsyncConnector",
     "Asset",
     "AssetType",
+    "Checkpoint",
     "SyncResult",
     "SyncStatus",
     "SampleConnector",

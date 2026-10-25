@@ -18,7 +18,11 @@ logger = logging.getLogger("ai_gateway.alerts")
 
 def send_slack_alert(alert_data: Dict[str, Any], webhook_url: Optional[str] = None) -> bool:
     """Send formatted Block Kit budget alert to Slack incoming webhook URL."""
-    url = webhook_url or getattr(settings, "SLACK_ALERT_WEBHOOK_URL", "") or os.getenv("SLACK_ALERT_WEBHOOK_URL", "")
+    url = (
+        webhook_url
+        or getattr(settings, "SLACK_ALERT_WEBHOOK_URL", "")
+        or os.getenv("SLACK_ALERT_WEBHOOK_URL", "")
+    )
     if not url:
         logger.debug("Slack alert skipped: No SLACK_ALERT_WEBHOOK_URL configured.")
         return False
@@ -30,20 +34,34 @@ def send_slack_alert(alert_data: Dict[str, Any], webhook_url: Optional[str] = No
     exceeded = alert_data.get("exceeded", False)
 
     status_icon = "🛑" if exceeded else "⚠️"
-    headline = f"{status_icon} Budget Cap Exceeded" if exceeded else f"{status_icon} Budget Threshold Warning ({threshold_pct}%)"
+    headline = (
+        f"{status_icon} Budget Cap Exceeded"
+        if exceeded
+        else f"{status_icon} Budget Threshold Warning ({threshold_pct}%)"
+    )
 
     payload = {
-        "text": f"{status_icon} [AEV Alert] {org_id} has reached {threshold_pct}% of budget cap (${running_spend:.2f} / ${budget_cap:.2f})",
+        "text": (
+            f"{status_icon} [AEV Alert] {org_id} has reached {threshold_pct}% "
+            f"of budget cap (${running_spend:.2f} / ${budget_cap:.2f})"
+        ),
         "blocks": [
             {
                 "type": "header",
-                "text": {"type": "plain_text", "text": f"{status_icon} AEV AI Gateway Spend Alert", "emoji": True},
+                "text": {
+                    "type": "plain_text",
+                    "text": f"{status_icon} AEV AI Gateway Spend Alert",
+                    "emoji": True,
+                },
             },
             {
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"*{headline}*\nOrganization *{org_id}* has consumed *{threshold_pct}%* of its allocated monthly LLM budget.",
+                    "text": (
+                        f"*{headline}*\nOrganization *{org_id}* has consumed "
+                        f"*{threshold_pct}%* of its allocated monthly LLM budget."
+                    ),
                 },
             },
             {
@@ -62,7 +80,11 @@ def send_slack_alert(alert_data: Dict[str, Any], webhook_url: Optional[str] = No
         with httpx.Client(timeout=5.0) as client:
             resp = client.post(url, json=payload)
             if resp.is_success:
-                logger.info("Successfully dispatched Slack budget alert for org '%s' (%s%%)", org_id, threshold_pct)
+                logger.info(
+                    "Successfully dispatched Slack budget alert for org '%s' (%s%%)",
+                    org_id,
+                    threshold_pct,
+                )
                 return True
             logger.warning("Slack webhook returned HTTP %d: %s", resp.status_code, resp.text)
             return False
@@ -71,9 +93,15 @@ def send_slack_alert(alert_data: Dict[str, Any], webhook_url: Optional[str] = No
         return False
 
 
-def send_pagerduty_alert(alert_data: Dict[str, Any], webhook_url_or_key: Optional[str] = None) -> bool:
+def send_pagerduty_alert(
+    alert_data: Dict[str, Any], webhook_url_or_key: Optional[str] = None
+) -> bool:
     """Send PagerDuty Events API v2 trigger alert on budget breach."""
-    target = webhook_url_or_key or getattr(settings, "PAGERDUTY_ALERT_WEBHOOK_URL", "") or os.getenv("PAGERDUTY_ALERT_WEBHOOK_URL", "")
+    target = (
+        webhook_url_or_key
+        or getattr(settings, "PAGERDUTY_ALERT_WEBHOOK_URL", "")
+        or os.getenv("PAGERDUTY_ALERT_WEBHOOK_URL", "")
+    )
     if not target:
         logger.debug("PagerDuty alert skipped: No PAGERDUTY_ALERT_WEBHOOK_URL configured.")
         return False
@@ -92,7 +120,10 @@ def send_pagerduty_alert(alert_data: Dict[str, Any], webhook_url_or_key: Optiona
         "event_action": "trigger",
         "dedup_key": f"aev-gateway-budget-{org_id}-{threshold_pct}",
         "payload": {
-            "summary": f"AEV Gateway Spend Alert: Org '{org_id}' reached {threshold_pct}% of budget (${running_spend:.2f}/${budget_cap:.2f})",
+            "summary": (
+                f"AEV Gateway Spend Alert: Org '{org_id}' reached {threshold_pct}% "
+                f"of budget (${running_spend:.2f}/${budget_cap:.2f})"
+            ),
             "source": "aev-ai-gateway",
             "severity": "critical" if exceeded else "warning",
             "component": "ai-gateway",
@@ -105,7 +136,11 @@ def send_pagerduty_alert(alert_data: Dict[str, Any], webhook_url_or_key: Optiona
         with httpx.Client(timeout=5.0) as client:
             resp = client.post(endpoint, json=payload)
             if resp.is_success or resp.status_code in (200, 201, 202):
-                logger.info("Successfully dispatched PagerDuty budget alert for org '%s' (%s%%)", org_id, threshold_pct)
+                logger.info(
+                    "Successfully dispatched PagerDuty budget alert for org '%s' (%s%%)",
+                    org_id,
+                    threshold_pct,
+                )
                 return True
             logger.warning("PagerDuty webhook returned HTTP %d: %s", resp.status_code, resp.text)
             return False

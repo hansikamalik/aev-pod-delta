@@ -28,3 +28,10 @@ class HealthCheckResult(BaseModel):
     status: str = "healthy"
     message: Optional[str] = None
     details: Dict[str, Any] = Field(default_factory=dict)
+
+
+class Checkpoint(BaseModel):
+    high_water_mark: Optional[str] = None
+    last_sync_at: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+

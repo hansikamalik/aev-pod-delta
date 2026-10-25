@@ -8,7 +8,7 @@ severity filters. The local exposure list contains demo data.
 
 from typing import Any, Dict, List, Optional
 
-from app.mock_data import get_asset_name, get_exposures
+from app.mock_data import get_exposures
 from app.tools import register_tool
 
 

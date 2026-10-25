@@ -255,3 +255,17 @@ class SyncResult(BaseModel):
             "finished_at": self.finished_at.isoformat(),
             "duration_seconds": self.duration_seconds,
         }
+
+
+class Checkpoint(BaseModel):
+    """
+    State tracking checkpoint for incremental synchronization pagination.
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")
+
+    last_sync_timestamp: Optional[datetime] = None
+    cursor: Optional[str] = None
+    offset: Optional[int] = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
