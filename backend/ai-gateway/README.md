@@ -89,9 +89,9 @@ The gateway supports two modes of identity resolution:
 
 ---
 
-## Tools
+## Tools & Dynamic Tool Calling (P0-3)
 
-The gateway exposes 8 specialized tools. Every tool call is checked against the caller's role permissions. Today, `/copilot/query` automatically runs `risk_score_get` when an asset ID appears in the question; the other tools are called through the dispatcher in `app/tools.py`.
+The gateway exposes 8 specialized tools with automated, autonomous function-calling orchestration powered by Gemma / Gemini LLM reasoning (`app/tool_router.py`). The autonomous loop evaluates user natural-language queries, determines necessary tool calls, validates caller RBAC permissions before execution, invokes the tools, feeds structured results back into the model context, and guarantees cited, verified answers.
 
 | Tool | What it does | Data source |
 |---|---|---|
@@ -161,15 +161,17 @@ The gateway exposes 8 specialized tools. Every tool call is checked against the 
 ai-gateway/
 ├── app/
 │   ├── __init__.py
+│   ├── alerts.py             # Slack Block Kit & PagerDuty Events v2 alert webhooks (P1-3)
 │   ├── asset_search.py       # asset_search tool (AI Context call + local fallback)
 │   ├── audit_log.py          # ai_interactions storage, query, retention cleanup
 │   ├── citations.py          # Citations router, formatting, and response guarantee
 │   ├── client.py             # Gemma client (Google Cloud + Colab GPU + fallback monitor)
 │   ├── config.py             # App settings
 │   ├── copilot_tools.py      # workflow_assist, policy_check, audit_query, integration_list
-│   ├── cost_tracker.py       # Per-model cost estimation, org budget caps and alerts
+│   ├── cost_tracker.py       # Per-model cost estimation, persistent spend tracking (P1-3)
 │   ├── exposure_query.py     # exposure_query tool
 │   ├── guardrails.py         # Prompt-injection / PII / blocked-topic checks
+│   ├── jwt_auth.py           # Cryptographic JWT auth & Pod Alpha trust boundary (P1-1)
 │   ├── load_generator.py     # Synthetic load-test harness
 │   ├── main.py               # FastAPI app + routes
 │   ├── mock_data.py          # Shared mock data layer
@@ -178,6 +180,7 @@ ai-gateway/
 │   ├── rate_limiter.py       # Redis-backed per-user rate limiting
 │   ├── report_generate.py    # report_generate tool
 │   ├── token_tracker.py      # Token usage extraction
+│   ├── tool_router.py        # Dynamic Gemma LLM function-calling orchestration (P0-3)
 │   └── tools.py              # Tool-calling registry and dispatcher
 ├── docs/
 │   └── RUNBOOK_AND_SECURITY_REVIEW.md

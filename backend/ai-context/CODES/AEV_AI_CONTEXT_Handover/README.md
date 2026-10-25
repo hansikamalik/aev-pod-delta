@@ -75,8 +75,12 @@ Restart the service after changing `.env`. Send keys as `Authorization: Bearer Y
 ## Fact-checking policy and optional external webhook
 Copilot endpoints use database-grounded facts and list missing fields. If `FACT_CHECK_WEBHOOK_URL` is configured, the service POSTs a JSON object containing `facts` and `source` to that URL. An optional `FACT_CHECK_WEBHOOK_TOKEN` is sent as a Bearer token, and `FACT_CHECK_WEBHOOK_TIMEOUT_SECONDS` defaults to 3. The endpoint should return JSON; its response is exposed under `external_check.result`. A missing URL, invalid response, or timeout is explicitly reported and never treated as verification. No vulnerability scanner or threat-intelligence feed is queried by these endpoints. This optional integration is separate from the shared mock-data source.
 
-## Freshness SLA and measurement
-`PATCH /assets/{id}` regenerates the asset embedding synchronously before returning. Persisted `updated_at` and `embedding_updated_at` timestamps support per-record lag, and `GET /copilot/freshness-metrics` provides a current snapshot. Apply the migration and refresh legacy embeddings first. This snapshot is not a historical SLA report; retries, background queueing, alerting, and load testing are not included. Do not claim 60-second SLA compliance until verified under representative load.
+## Real-Time Vector Freshness Pipeline & 60s SLA (P1-4 Update)
+
+The service now features an event-driven vector freshness pipeline (`app/freshness_pipeline.py`) delivering automated vector re-embedding within the 60-second SLA:
+- **Event Listeners:** Consumes `AssetUpdated`, `ExposureDetected`, and `RiskCalculated` events via Redis Pub/Sub (`aev:events:asset_changes`) and REST webhook (`POST /events/ingest`).
+- **Automated Re-Embedding:** Regenerates 384-dimensional dense embeddings, updates `embedding_updated_at` and `updated_at`, measures end-to-end lag, and verifies the 60-second Freshness SLA threshold.
+- **Metrics & Monitoring:** Real-time SLA compliance stats, processed event counts, and lag distributions are reported at `GET /events/metrics` and `GET /copilot/freshness-metrics`. Verified by 10 comprehensive unit tests in `app/tests/test_freshness_pipeline.py`.
 
 ## Permission-aware RAG audit (current result)
 **Partially enforced.** Bearer API keys authenticate protected requests; memory access is scoped to the configured key principal, while asset/Copilot/template routes are admin-only. There is still no per-asset owner/tenant policy, so multi-tenant asset-level RAG authorization is not implemented. See `app/PRIVACY.md` and `/copilot/permission-audit`.

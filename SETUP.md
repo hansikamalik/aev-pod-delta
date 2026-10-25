@@ -45,7 +45,7 @@ The Pod Delta backend consists of three core FastAPI microservices backed by Pos
 
 ## 2. Quickstart Options
 
-### Option A: Complete Multi-Container Stack (Docker Compose)
+### Option A: Complete Multi-Container Stack (Docker Compose Dev)
 
 Starts all services, provisions pgvector, and links internal communication:
 
@@ -64,7 +64,47 @@ curl http://localhost:8003/health  # Integration Service: {"status": "ok"}
 
 ---
 
-### Option B: Local Standalone Development (Without Docker)
+### Option B: Production Multi-Container Stack with NGINX Ingress (P2-1)
+
+Runs the hardened production multi-container architecture with internal network isolation (`aev-internal`) and a unified NGINX ingress reverse proxy on port 80:
+
+```bash
+# 1. Prepare environment
+cp .env.example .env
+
+# 2. Launch production stack
+docker-compose -f docker-compose.prod.yml up -d
+
+# 3. Verify ingress routing through port 80
+curl http://localhost/health
+curl http://localhost/api/v1/copilot/health
+curl http://localhost/api/v1/context/health
+curl http://localhost/api/v1/integrations/health
+```
+
+---
+
+### Option C: Kubernetes & Helm Deployment (P2-4)
+
+For staging and production Kubernetes clusters, manifests and Helm v3 charts are located in [`deploy/`](deploy/):
+
+```bash
+# Deploy with Helm v3
+helm install aev-pod-delta deploy/helm/aev-pod-delta \
+  --namespace aev-system \
+  --create-namespace \
+  --set secrets.postgresPassword="your_strong_password" \
+  --set secrets.googleApiKey="your_google_api_key" \
+  --set secrets.jwtSecret="your_jwt_secret_min_32_chars"
+
+# Or deploy with raw kubectl manifests
+kubectl apply -f deploy/k8s/
+```
+See [`deploy/README.md`](deploy/README.md) for full instructions.
+
+---
+
+### Option D: Local Standalone Development (Without Docker)
 
 You can run each service directly with Python 3.12:
 
@@ -99,7 +139,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8003 --reload
 
 ---
 
-### Option C: Zero-Dependency Master Handover Demo Runner
+### Option E: Zero-Dependency Master Handover Demo Runner
 
 To run a complete terminal demonstration across all five subsystems using the single unified dataset without starting external servers or Docker:
 
@@ -109,7 +149,7 @@ python3 run_unified_handover_demo.py
 
 ---
 
-## 3. Running the Test Suite (419 Tests)
+## 3. Running the Test Suite (436 Tests)
 
 All services maintain unit and integration test coverage:
 
@@ -120,7 +160,7 @@ python3 -m pytest -c pytest.ini
 # 2. Integration Suite (36 tests: Integration API, Redis locks, checkpoints, Jira)
 cd backend/integration && python3 -m pytest -c pytest.ini
 
-# 3. AI Context Suite (13 tests: Freshness 60s SLA pipeline, mock data E2E, isolation)
+# 3. AI Context Suite (30 tests: Freshness 60s SLA pipeline, mock data E2E, isolation)
 cd backend/ai-context/CODES/AEV_AI_CONTEXT_Handover && PYTHONPATH=. python3 -m pytest app/tests/ -o pythonpath=.
 ```
 

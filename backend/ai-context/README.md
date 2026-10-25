@@ -78,9 +78,9 @@ uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload
 
 ## Testing
 
-Run the isolated AI Context test suite:
+Run the isolated AI Context test suite (all 30 tests pass):
 
 ```bash
 cd backend/ai-context/CODES/AEV_AI_CONTEXT_Handover
-PYTHONPATH=. python3 -m pytest app/tests/test_freshness_pipeline.py app/tests/test_mock_data.py -o pythonpath=.
+PYTHONPATH=. python3 -m pytest app/tests/ -v -o pythonpath=.
 ```

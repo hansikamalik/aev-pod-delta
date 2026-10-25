@@ -1,144 +1,73 @@
 # Integration Service
 
-AEV Platform — Integration Squad — Week 1 scaffold.
+The **Integration Service** is the central management and execution engine for third-party cloud and endpoint connectors within the AEV Platform.
 
-Owners (Week 1): Harshal Sahare & Bhavesh Kanekar (FastAPI skeleton, `/health`,
-contract test, docs). Vatsal Thummar owns the Connector interface freeze.
-Subramani owns the `integrations` / `sync_jobs` migrations (not in this scaffold yet).
+---
 
-## Setup
+## Capabilities & Architecture
 
-1. Create a virtual environment (recommended):
-   ```
-   python -m venv venv
-   source venv/bin/activate      # Windows: venv\Scripts\activate
-   ```
-2. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-3. Copy the environment file:
-   ```
-   cp .env.example .env
-   ```
-4. Run the service locally:
-   ```
-   uvicorn app.main:app --reload
-   ```
-5. Visit http://localhost:8000/health — should return:
-   ```json
-   {"status": "ok", "service": "integration-service"}
-   ```
-   Interactive API docs are auto-generated at http://localhost:8000/docs.
+1. **Connector Lifecycle Management:**
+   - Registers and manages third-party connectors conforming to the canonical `aev-connector-sdk` v1.0.0 contract (`Connector` and `AsyncConnector`).
+   - Supports 19+ platforms including AWS, GCP, CrowdStrike Falcon, Azure, Jira Cloud, GitHub, GitLab, Okta, and Microsoft 365.
 
-## Running tests
+2. **Distributed Concurrency Mutex (P1-2):**
+   - Implements `SyncLockManager` backed by Redis (`SET lock:sync:{id} {uuid} NX EX 300`).
+   - Automatically returns `HTTP 409 Conflict` (`{"error": "sync_in_progress"}`) if an integration is already running a sync job.
+   - Releases locks atomically using Lua scripts with thread-safe in-memory fallback.
 
-```
-pytest
-```
+3. **Persistent Sync Checkpoints (P1-2):**
+   - Automatically writes sync progress, pagination cursors, and execution status to PostgreSQL table `sync_checkpoints`.
+   - Accessible via `GET /api/v1/integrations/{id}/checkpoint`.
 
-This runs:
-- `tests/test_health.py` — confirms `/health` returns 200
-- `tests/test_contract.py` — confirms a connector implementing the shared
-  interface (`app/connector_interface.py`) can be discovered, synced, and
-  health-checked end-to-end
+4. **Canonical Connector SDK v1.0.0 (P1-5):**
+   - Uses the unified canonical SDK (`connector_sdk`) with dual snake_case / camelCase property serialization and structured domain exceptions.
 
-## Connector Contract
+---
 
-`app/connector_interface.py` currently holds a **placeholder** version of the
-shared Connector interface. The real, agreed-upon contract is owned jointly by
-the Integration Squad (Vatsal Thummar) and the Connector SDK Squad (Sai Kumar
-Dungala), and must be frozen by end of Week 1.
+## API Endpoints
 
-`tests/dummy_connector.py` is a fake connector (no real API calls, hardcoded
-data) used purely to prove the interface works. Once the real interface is
-frozen:
+| Method | Path | Description | Access |
+|---|---|---|---|
+| `GET` | `/health` | Service health status | Public |
+| `GET` | `/api/v1/integrations` | List all configured connectors | Authenticated |
+| `POST` | `/api/v1/integrations` | Register a new integration connector | Authenticated |
+| `GET` | `/api/v1/integrations/{id}` | Retrieve details of a specific integration | Authenticated |
+| `PUT` | `/api/v1/integrations/{id}` | Update integration configuration or credentials | Authenticated |
+| `DELETE` | `/api/v1/integrations/{id}` | Delete an integration | Authenticated |
+| `POST` | `/api/v1/integrations/{id}/sync` | Trigger an ingestion sync run (Redis locked) | Authenticated |
+| `GET` | `/api/v1/integrations/{id}/checkpoint` | Retrieve persistent sync checkpoint state | Authenticated |
+| `GET` | `/api/v1/integrations/{id}/health` | Perform real-time connectivity health check | Authenticated |
 
-1. Replace `app/connector_interface.py` with the agreed version (or import
-   it from the shared SDK package once that exists).
-2. Re-run `pytest`. If `DummyConnector` still passes without changes, the
-   contract is stable and safe for real connectors (AWS, Azure, GCP, etc.)
-   to build against.
+---
 
-## Running with Docker
+## Setup & Local Run
 
-Instead of the manual venv setup above, you can run the whole service (plus a
-Postgres database) with Docker Compose:
-
-```
-docker-compose up --build
+### Option 1: Docker Compose (Port 8003)
+Run as part of the multi-container stack:
+```bash
+docker compose up integration-service --build -d
 ```
 
-This starts:
-- `integration-service` — this FastAPI app, available at `http://localhost:8000`
-- `postgres` — a Postgres 16 database, available at `localhost:5432`
+### Option 2: Local Python Execution
+```bash
+# 1. Install dependencies
+pip install -r requirements.txt
+pip install -e ../../connector-sdk
 
-Check it worked the same way as before:
-```
-curl http://localhost:8000/health
-```
+# 2. Configure environment
+export DATABASE_URL="postgresql://aev:secret@localhost:5432/aevdb"
+export REDIS_URL="redis://localhost:6379"
 
-To stop everything:
-```
-docker-compose down
-```
-
-To stop and also wipe the database data:
-```
-docker-compose down -v
+# 3. Start service
+uvicorn app.main:app --host 0.0.0.0 --port 8003 --reload
 ```
 
-Requires [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-installed and running first.
+---
 
-## Project structure
+## Running Tests
 
+Run the full integration test suite:
+```bash
+pytest -c ../pytest.ini -v
 ```
-integration-service/
-├── app/
-│   ├── main.py                 # FastAPI app entrypoint
-│   ├── config.py               # env var loading
-│   ├── connector_interface.py  # placeholder Connector contract
-│   └── routes/
-│       └── health.py           # GET /health
-├── tests/
-│   ├── dummy_connector.py      # fake connector for contract testing
-│   ├── test_contract.py        # proves the interface works end-to-end
-│   └── test_health.py          # proves /health returns 200
-├── requirements.txt
-├── .env.example
-└── README.md
-```
-
-## Pushing to GitHub
-
-This project is already a git repo with an initial commit. To push it to a
-new GitHub repo:
-
-1. Create an empty repo on GitHub (don't initialize it with a README/license —
-   this project already has one).
-2. Point your local repo at it and push:
-   ```
-   git remote add origin https://github.com/<your-username>/<repo-name>.git
-   git branch -M main
-   git push -u origin main
-   ```
-3. For subsequent changes:
-   ```
-   git add .
-   git commit -m "your message"
-   git push
-   ```
-
-`.gitignore` is already set up to exclude `venv/`, `__pycache__/`, `.env`,
-and other local-only files - so none of that gets pushed by accident.
-
-## Week 1 checklist status
-
-- [x] Service scaffold runs locally without errors
-- [x] `/health` passes
-- [x] Contract test passes against dummy connector
-- [x] README written
-- [ ] Connector interface contract agreed w/ SDK squad (blocks replacing the
-      placeholder — owned by Vatsal + Sai Kumar)
-- [ ] Merged to `main` via reviewed PR
+All 36 tests (API endpoints, Redis distributed locking, PostgreSQL checkpoints, and connector contract tests) will execute and pass.
