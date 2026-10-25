@@ -30,19 +30,22 @@ Before writing code, read the interface and models first. Do not copy a connecto
 
 Open these files in order:
 
-1. [Connector interface](backend/connector-sdk/connector_sdk/connector.py) — understand the required methods and default behavior.
-2. [Shared models](backend/connector-sdk/connector_sdk/models.py) — understand the asset and sync result fields and valid values.
-3. [Sample connector](backend/connector-sdk/connector_sdk/sample_connector.py) — follow the smallest working example.
-4. [Sample connector tests](backend/connector-sdk/tests/test_sample_connector.py) — learn what behavior the tests expect.
+1. [Connector interface](backend/connector-sdk/connector_sdk/connector.py) — understand both `Connector` and `AsyncConnector` lifecycle methods (`discover`, `ingest`, `sync`, `async_sync`).
+2. [Shared models](backend/connector-sdk/connector_sdk/models.py) — understand `Asset` (with dual `discovered_at` / `discoveredAt` properties), `AssetType`, and `SyncResult` (with `records_synced` and `success` aliases).
+3. [Domain exceptions](backend/connector-sdk/connector_sdk/exceptions.py) — use standardized exception types (`ConnectorError`, `AuthenticationError`, `ValidationError`).
+4. [Sample connector](backend/connector-sdk/connector_sdk/sample_connector.py) — follow the reference working example.
+5. [Sample connector tests](backend/connector-sdk/tests/test_sample_connector.py) — learn what behavior the tests expect.
+6. [Canonical reconciliation tests](backend/connector-sdk/tests/test_canonical_reconciliation.py) — see async and sync verification under v1.0.0.
 
 When implementing a connector, pay attention to:
 
-- **Discovery:** read from the vendor API and normalize returned resources into the SDK's asset model.
+- **Asynchronous & Synchronous support:** You can inherit from `AsyncConnector` for pure `async def discover()` / `async def ingest()`, or standard `Connector`. The SDK bridges both automatically.
+- **Discovery:** read from the vendor API and normalize returned resources into the SDK's asset model. Both snake_case and camelCase attributes are fully supported.
 - **Ingestion:** pass normalized assets to the platform-facing ingestion implementation.
-- **Synchronization:** understand whether `sync()` is inherited or overridden and how errors are represented.
-- **Health checks:** return the contract's expected result for reachable, unauthorized, and unavailable vendor services.
-- **Configuration and credentials:** describe required settings clearly and mark secret fields as secrets. Never commit real credentials.
-- **Failure behavior:** use timeouts for network calls and test error cases, not just the happy path.
+- **Synchronization:** `sync()` and `async_sync()` coordinate discover -> ingest -> status derivation.
+- **Health checks:** implement `check_health()` (or `health_check()`).
+- **Configuration and credentials:** describe required settings clearly via `describe_config()` / `describe_credentials()` (or `get_config_schema()` / `get_credential_schema()`).
+- **Failure behavior:** use timeouts for network calls and throw structured `ConnectorError` subclasses.
 
 The Python and TypeScript SDKs are intended to follow the same contract, but verify their current implementations side by side rather than assuming every method or field is automatically kept in parity.
 

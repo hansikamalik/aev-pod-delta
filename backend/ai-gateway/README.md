@@ -66,17 +66,26 @@ The AI Gateway Service is the core backend component of the AEV Platform. It is 
 | POST | `/admin/retention-cleanup` | Starts the expired audit log cleanup job in the background. Admin role only (`X-User-Role: admin`). |
 | GET | `/metrics/fallback` | Fallback counts, fallback rate, and reason breakdown. |
 
-**Request headers** (all optional, with defaults):
+### Authentication & Trust Boundaries (P1-1 Update)
+
+The gateway supports two modes of identity resolution:
+1. **Cryptographic JWT Authentication (Enterprise Mode):**
+   - Endpoints validate cryptographically signed bearer tokens (`Authorization: Bearer <jwt>`) using HMAC-SHA256 (HS256) or RSA (RS256).
+   - Validates claims: `user_id`, `role`, `tenant_id`, `iss`, `aud`, and expiration (`exp`).
+   - Enabled strictly with `JWT_AUTH_REQUIRED=true`.
+   - Inter-pod contract with Pod Alpha is documented in [`docs/AUTH_CONTRACT_POD_ALPHA.md`](file:///home/vikryansh/Workspace/projects/aev-pod-delta/docs/AUTH_CONTRACT_POD_ALPHA.md).
+
+2. **Fallback Headers (Development Mode):**
+   - When `JWT_AUTH_REQUIRED=false` (default for local test harnesses), the gateway gracefully falls back to explicit request headers:
 
 | Header | Purpose | Default |
 |---|---|---|
+| `Authorization` | Bearer JWT token (takes precedence over all headers) | none |
 | `X-User-ID` | Caller identity, used for rate limiting and the audit log | `anonymous` |
 | `X-User-Role` | Role used for RBAC (Admin, Analyst, ReadOnly, Auditor) | `anonymous` |
 | `X-Org-Tier` | Org tier for rate limits (`free`, `pro`, `enterprise`) | `free` |
 | `X-Org-ID` | Organization used for running spend and budget alerts | none |
 | `X-Budget-Cap` | Per-request cost cap only. It never overrides an org's configured cap. | none |
-
-> **Header trust:** the gateway trusts `X-User-ID` and `X-User-Role` exactly as sent and does no authentication of its own. It must sit behind Pod Alpha authentication, which sets these headers. Never expose it directly to clients.
 
 ---
 
@@ -115,13 +124,18 @@ The gateway exposes 8 specialized tools. Every tool call is checked against the 
 
 ---
 
-## Rate Limiting & Cost Management
+## Rate Limiting & Cost Management (P1-3 Update)
 
 - **Rate limits:** enforced per user, based on org tier (`free`, `pro`, `enterprise`).
-- **Budget caps and alerts:** 80% and 100% alerts fire when an org reaches those thresholds. The org cap comes from `ORG_BUDGET_CAPS` in `app/cost_tracker.py` or can be adjusted via `CostTracker.set_org_budget_cap()`.
-- **Model pricing (D1):** all models (`gemma-4-31b-it`, `gemma-4-26b-a4b-it`, `gemma-colab-gpu`) are currently priced at `0.0` (free tier). In real use spend remains `$0.00`; tests use synthetic pricing to validate threshold crossings. When transitioning to paid LLM providers, configure actual per-1k token rates in `MODEL_PRICING` in `app/cost_tracker.py`.
-- **In-memory spend tracking (D2):** spend is currently accumulated in-memory (`CostTracker._org_spend`), which resets upon application restarts. For production persistence across container reboots, spend will be computed directly from `ai_interactions` (which stores per-row `cost`) grouped by organization ID (planned post-go-live migration to add `org_id` column).
-- **Alert destinations (D3):** budget alerts and fallback rate-spike alerts currently emit structured logs only (`WARNING` / `CRITICAL` via Python loggers). Post-go-live alerting will support dispatching webhook notifications to external notification targets (e.g. Slack, PagerDuty) via an optional `ALERT_WEBHOOK_URL` environment configuration.
+- **Persistent Spend Tracking in PostgreSQL (P1-3):**
+  - Spend is aggregated and persisted live to PostgreSQL table `ai_interactions_spend`.
+  - State survives server reboots: on startup, existing spend is automatically restored and synced with historical token usage.
+- **Budget Caps & Threshold Alerts (P1-3):**
+  - 80% (Warning) and 100% (Critical Budget Cap Exceeded) thresholds trigger automated notifications.
+  - Outbound alerts are dispatched via external webhooks:
+    - **Slack Block Kit** notifications (`SLACK_ALERT_WEBHOOK_URL`)
+    - **PagerDuty Events API v2** incidents (`PAGERDUTY_ALERT_WEBHOOK_URL`)
+- **Model pricing:** all models (`gemma-4-31b-it`, `gemma-4-26b-a4b-it`, `gemma-colab-gpu`) are currently priced at `0.0` (free tier) by default, with custom tier overrides configurable in `MODEL_PRICING`.
 
 ---
 

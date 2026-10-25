@@ -72,6 +72,11 @@ python3 run_unified_handover_demo.py
 
 Execution takes **< 1 second**, requires **zero external dependencies** (runs on Python 3.12 stdlib), and outputs a complete terminal presentation.
 
+### Environment Badging System
+To ensure complete transparency during audits and executive evaluations, each stage and final scorecard metric clearly states whether it is executing in an isolated deterministic sandbox or against live operational microservice infrastructure:
+- `[SANDBOX / MOCK]` — Deterministic fixture execution for hermetic, zero-dependency testing.
+- `[LIVE OPERATIONAL]` — Live microservice execution against running container endpoints (pgvector, Redis, Gemma API).
+
 ---
 
 ## 4. Step-by-Step Walkthrough (What You Will See)
