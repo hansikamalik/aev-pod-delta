@@ -52,7 +52,10 @@ _DEFAULT_RISK_FACTORS: Dict[str, Dict[str, int]] = {
 _dataset_path = os.getenv("AEV_DATASET_PATH")
 if not _dataset_path:
     _candidate = os.path.abspath(
-        os.path.join(os.path.dirname(__file__), "..", "..", "..", "data", "aev_unified_handover_dataset.json")
+        os.path.join(
+            os.path.dirname(__file__),
+            "..", "..", "..", "data", "aev_unified_handover_dataset.json"
+        )
     )
     if os.path.exists(_candidate):
         _dataset_path = _candidate

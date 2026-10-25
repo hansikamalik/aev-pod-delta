@@ -253,7 +253,10 @@ def query(
     try:
         import inspect
         sig = inspect.signature(ask_gpt)
-        if "tools" in sig.parameters or any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()):
+        if "tools" in sig.parameters or any(
+            p.kind == inspect.Parameter.VAR_KEYWORD
+            for p in sig.parameters.values()
+        ):
             tools_decl = [get_gemini_tools()] if get_gemini_tools() else None
             result = ask_gpt(question_for_model, tools=tools_decl)
         else:

@@ -76,7 +76,8 @@ def setup_database():
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     model TEXT
                 );
-                CREATE INDEX IF NOT EXISTS idx_ai_interactions_created_at ON ai_interactions (created_at);
+                CREATE INDEX IF NOT EXISTS idx_ai_interactions_created_at
+                    ON ai_interactions (created_at);
                 CREATE INDEX IF NOT EXISTS idx_ai_interactions_user_id ON ai_interactions (user_id);
 
                 CREATE TABLE IF NOT EXISTS citation_flags (
@@ -87,7 +88,8 @@ def setup_database():
                     flagged_by TEXT NOT NULL,
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
-                CREATE INDEX IF NOT EXISTS idx_citation_flags_interaction_id ON citation_flags (interaction_id);
+                CREATE INDEX IF NOT EXISTS idx_citation_flags_interaction_id
+                    ON citation_flags (interaction_id);
                 """
             )
             return

@@ -65,7 +65,8 @@ class CostTracker:
                             token_count BIGINT NOT NULL DEFAULT 0,
                             created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
                         );
-                        CREATE INDEX IF NOT EXISTS idx_spend_org ON ai_spend_records (org_id, window_start);
+                        CREATE INDEX IF NOT EXISTS idx_spend_org
+                            ON ai_spend_records (org_id, window_start);
                     """)
                     conn.commit()
         except Exception as exc:
@@ -82,7 +83,8 @@ class CostTracker:
             with psycopg.connect(db_url) as conn:
                 with conn.cursor() as cur:
                     cur.execute("""
-                        INSERT INTO ai_spend_records (org_id, window_start, total_cost_usd, token_count)
+                        INSERT INTO ai_spend_records
+                            (org_id, window_start, total_cost_usd, token_count)
                         VALUES (%s, %s, %s, %s);
                     """, (org_id, window_start, cost_usd, total_tokens))
                     conn.commit()

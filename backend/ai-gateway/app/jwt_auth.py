@@ -32,9 +32,13 @@ class AuthenticatedUser(BaseModel):
     role: str = Field(default="viewer", description="RBAC role (admin, analyst, viewer, auditor)")
     tenant_id: str = Field(default="default_tenant", description="Organization / tenant ID")
     org_tier: str = Field(default="free", description="Subscription tier (free, pro, enterprise)")
-    budget_cap: Optional[float] = Field(default=None, description="Optional dollar spend budget cap")
+    budget_cap: Optional[float] = Field(
+        default=None, description="Optional dollar spend budget cap"
+    )
     email: Optional[str] = Field(default=None, description="Optional principal email")
-    scopes: List[str] = Field(default_factory=list, description="OAuth scopes or fine-grained claims")
+    scopes: List[str] = Field(
+        default_factory=list, description="OAuth scopes or fine-grained claims"
+    )
     token_auth: bool = Field(default=True, description="True if verified via cryptographic JWT")
 
 
@@ -54,7 +58,9 @@ def create_jwt_token(
 ) -> str:
     """Mint a cryptographically signed JWT for tests or Pod Alpha integration."""
     now = datetime.now(timezone.utc)
-    key = secret_key or getattr(settings, "JWT_SECRET_KEY", "aev-pod-alpha-development-secret-key-32bytes-min")
+    key = secret_key or getattr(
+        settings, "JWT_SECRET_KEY", "aev-pod-alpha-development-secret-key-32bytes-min"
+    )
     algo = algorithm or getattr(settings, "JWT_ALGORITHM", "HS256")
     iss = issuer or getattr(settings, "JWT_ISSUER", "aev-pod-alpha")
     aud = audience or getattr(settings, "JWT_AUDIENCE", "aev-pod-delta")
@@ -102,7 +108,10 @@ def verify_jwt_token(token: str) -> AuthenticatedUser:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={"error": "token_expired", "message": "Authentication token has expired"},
-            headers={"WWW-Authenticate": "Bearer error=\"invalid_token\", error_description=\"The token has expired\""},
+            headers={"WWW-Authenticate": (
+                "Bearer error=\"invalid_token\","
+                " error_description=\"The token has expired\""
+            )},
         ) from exc
     except jwt.InvalidIssuerError as exc:
         logger.warning("Rejected JWT with invalid issuer: %s", exc)
@@ -115,14 +124,20 @@ def verify_jwt_token(token: str) -> AuthenticatedUser:
         logger.warning("Rejected JWT with invalid audience: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "invalid_audience", "message": "Token audience does not match Pod Delta"},
+            detail={
+                "error": "invalid_audience",
+                "message": "Token audience does not match Pod Delta",
+            },
             headers={"WWW-Authenticate": "Bearer error=\"invalid_token\""},
         ) from exc
     except jwt.PyJWTError as exc:
         logger.warning("Rejected malformed or tampered JWT: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"error": "invalid_token", "message": "Invalid, tampered, or malformed authentication token"},
+            detail={
+                "error": "invalid_token",
+                "message": "Invalid, tampered, or malformed authentication token",
+            },
             headers={"WWW-Authenticate": "Bearer error=\"invalid_token\""},
         ) from exc
 
@@ -163,7 +178,10 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail={
                 "error": "missing_bearer_token",
-                "message": "Authorization: Bearer <pod_alpha_jwt> header is required to access Pod Delta services",
+                "message": (
+                    "Authorization: Bearer <pod_alpha_jwt> header"
+                    " is required to access Pod Delta services"
+                ),
             },
             headers={"WWW-Authenticate": "Bearer"},
         )
