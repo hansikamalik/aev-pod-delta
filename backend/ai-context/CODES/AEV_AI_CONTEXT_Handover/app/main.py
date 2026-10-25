@@ -23,6 +23,7 @@ from app.schemas import (
     TemplateUpdate,
 )
 from app.embedding import generate_embedding
+from app.freshness_pipeline import freshness_pipeline
 
 
 Base.metadata.create_all(bind=engine)
@@ -208,8 +209,8 @@ async def api_key_authentication(request: Request, call_next):
     request.state.principal = principal
     role = principal["role"]
 
-    # Templates and administrative Copilot operations stay admin-only.
-    if path.startswith("/templates") or path in ADMIN_ONLY_EXACT_PATHS:
+    # Templates, event ingestion, and administrative Copilot operations stay admin-only.
+    if path.startswith(("/templates", "/events")) or path in ADMIN_ONLY_EXACT_PATHS:
         if role != "admin":
             from starlette.responses import JSONResponse
             return JSONResponse(
@@ -1359,6 +1360,7 @@ def copilot_freshness_metrics(
         ),
         "max_measured_lag_seconds": max(measured) if measured else None,
         "sla_seconds": 60,
+        "pipeline_metrics": freshness_pipeline.get_metrics(),
         "data_source": _data_source_name(),
         "note": (
             "Authorized-scope snapshot of source timestamps only; "
@@ -1366,6 +1368,65 @@ def copilot_freshness_metrics(
             "Mock timestamps are illustrative."
         ),
     }
+
+
+# --------------------------------------------------
+# REAL-TIME VECTOR FRESHNESS EVENT INGESTION (P1-4)
+# --------------------------------------------------
+
+@app.post("/events/ingest")
+def ingest_asset_event(
+    payload: dict,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    """
+    Ingest asset change events (AssetUpdated, ExposureDetected, RiskCalculated),
+    trigger vector re-embedding, and enforce the 60s SLA.
+    """
+    if "events" in payload and isinstance(payload["events"], list):
+        results = [
+            freshness_pipeline.process_event(ev, db=db)
+            for ev in payload["events"]
+        ]
+        return {
+            "status": "success",
+            "batch_size": len(results),
+            "results": results,
+            "pipeline_metrics": freshness_pipeline.get_metrics(),
+        }
+    else:
+        result = freshness_pipeline.process_event(payload, db=db)
+        return {
+            "status": "success",
+            "result": result,
+            "pipeline_metrics": freshness_pipeline.get_metrics(),
+        }
+
+
+@app.get("/events/metrics")
+def get_event_pipeline_metrics(request: Request):
+    """Return real-time metrics and 60s SLA compliance of the vector freshness pipeline."""
+    return freshness_pipeline.get_metrics()
+
+
+@app.on_event("startup")
+def startup_freshness_pipeline():
+    """Start background Redis event consumer if available."""
+    try:
+        freshness_pipeline.start_redis_listener()
+    except Exception:
+        pass
+
+
+@app.on_event("shutdown")
+def shutdown_freshness_pipeline():
+    """Stop background Redis event consumer on shutdown."""
+    try:
+        freshness_pipeline.stop_redis_listener()
+    except Exception:
+        pass
+
 
 
 # --------------------------------------------------

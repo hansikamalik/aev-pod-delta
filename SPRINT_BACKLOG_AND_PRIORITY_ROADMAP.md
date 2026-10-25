@@ -212,10 +212,11 @@ The AI Gateway trusts raw HTTP headers `X-User-ID` and `X-User-Role` completely.
 
 ---
 
-### P1-4 · Real-Time Vector Freshness Event Pipeline (60s SLA)
+### P1-4 · Real-Time Vector Freshness Event Pipeline (60s SLA) — **COMPLETED ✅**
 - **Squad:** Squad 2 (AI Context) — Lead: Shanmukha Satya Yandra
 - **Effort:** 3 Days
-- **Priority Rating:** ⭐⭐⭐⭐ (4/5 — Core SLA from design doc; code not yet committed)
+- **Priority Rating:** ⭐⭐⭐⭐ (4/5 — Core SLA from design doc; code committed)
+- **Status:** **COMPLETED ✅** (`freshness_pipeline.py` with `VectorFreshnessPipeline` event processor, Redis Pub/Sub listener/publisher, deterministic 384-dim fallback embedding, 60s SLA lag computation, `POST /events/ingest`, `GET /events/metrics`, `GET /copilot/freshness-metrics` integration, 10 unit tests — all passing)
 
 #### Problem
 Squad 2's Week 4 progress report outlines an event-driven pipeline that reacts to `AssetUpdated`, `ExposureDetected`, and `RiskCalculated` events within 60 seconds and re-computes vector embeddings. **This pipeline code has not yet been committed to the repository.**
@@ -365,10 +366,10 @@ Phase 5 — Deployment & Ops (Days 23–28)
 - [x] **P0-5** Rename hyphenated connector directories to valid Python package names (Completed ✅)
 
 ### 🟡 P1 — Do Second
-- [ ] **P1-1** Add JWT validation middleware; remove plain-header trust
-- [ ] **P1-2** Redis distributed lock + PostgreSQL-backed sync checkpoints
+- [x] **P1-1** Add JWT validation middleware; remove plain-header trust
+- [x] **P1-2** Redis distributed lock + PostgreSQL-backed sync checkpoints
 - [x] **P1-3** DB-backed cost aggregation + external alert webhook (Slack / PagerDuty)
-- [ ] **P1-4** Real-time vector freshness event pipeline (60s SLA)
+- [x] **P1-4** Real-time vector freshness event pipeline (60s SLA)
 - [ ] **P1-5** Canonical async Connector SDK reconciliation across all 19+ connectors
 
 ### 🟢 P2 — Do Third
