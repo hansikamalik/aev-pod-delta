@@ -95,6 +95,8 @@ jobs:
     defaults:
       run:
         working-directory: backend/ai-context/CODES/AEV_AI_CONTEXT_Handover
+    env:
+      PYTHONPATH: .
 
     steps:
       - name: Checkout repository

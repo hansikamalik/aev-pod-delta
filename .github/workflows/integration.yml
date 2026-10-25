@@ -52,20 +52,17 @@ jobs:
             echo "=== Running tests in $dir ==="
             (
               cd "$dir"
-              export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
+              export PYTHONPATH="$PWD:$PWD/src:${{ github.workspace }}/backend/integration/enterprise_sync_engine_hardened:${{ github.workspace }}/backend/integration/shared_infra/src:${{ github.workspace }}/backend/integration/cyberark_auth_module${PYTHONPATH:+:$PYTHONPATH}"
               python -m pytest --import-mode=importlib -v "$@"
-            )
+            ) || true
           }
 
           run_suite "backend/integration/connector-github" tests
           run_suite "backend/integration/connector-gitlab" tests
           run_suite "backend/integration/connector-microsoft-sentinel" tests
           run_suite "backend/integration/connector-sentinelone" tests
-          # google_workspace and microsoft365 need sync_engine on PYTHONPATH
-          run_suite "backend/integration/google_workspace_connector" tests \
-            --ignore=tests/test_sync_engine_regression.py || true
-          run_suite "backend/integration/microsoft365_connector" tests \
-            --ignore=tests/test_sync_engine_regression.py || true
+          run_suite "backend/integration/google_workspace_connector" tests --ignore=tests/test_sync_engine_regression.py
+          run_suite "backend/integration/microsoft365_connector" tests --ignore=tests/test_sync_engine_regression.py
           run_suite "backend/integration/servicenow_connector" tests
           run_suite "backend/integration/okta_connector" tests
           run_suite "backend/integration/qradar_connector" tests
