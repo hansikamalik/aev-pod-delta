@@ -99,11 +99,19 @@ def _ensure_risk_score_citation(
 
 @app.on_event("startup")
 def startup_event():
-    """Initialize the database schema when the application starts."""
+    """Initialize database schemas and register external spend alert webhooks."""
     try:
         setup_database()
     except Exception as exc:
         logger.warning(f"Database setup skipped (DB offline): {exc}")
+
+    try:
+        CostTracker._ensure_spend_table()
+    except Exception:
+        pass
+
+    from app.alerts import dispatch_budget_alert
+    CostTracker.register_notification_hook(dispatch_budget_alert)
 
 
 @app.get("/")

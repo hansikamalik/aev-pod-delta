@@ -1,6 +1,8 @@
-"""AI model cost calculation and budget-cap enforcement."""
+"""AI model cost calculation, persistent spend tracking, and budget-cap enforcement."""
 
 import logging
+import os
+from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger("ai_gateway.cost_tracker")
@@ -43,6 +45,75 @@ class CostTracker:
     }
 
     ALERT_THRESHOLDS = (0.8, 1.0)  # 80% warning, 100% cap reached
+
+    # ---- Persistent Database Spend Methods (P1-3) ---------------------------
+
+    @classmethod
+    def _ensure_spend_table(cls) -> None:
+        """Create ai_spend_records table in PostgreSQL if it does not exist."""
+        db_url = os.getenv("DATABASE_URL", "postgresql://aev:secret@localhost:5432/aevdb")
+        try:
+            import psycopg
+            with psycopg.connect(db_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS ai_spend_records (
+                            id SERIAL PRIMARY KEY,
+                            org_id VARCHAR(128) NOT NULL,
+                            window_start TIMESTAMPTZ NOT NULL,
+                            total_cost_usd NUMERIC(10, 6) NOT NULL DEFAULT 0.0,
+                            token_count BIGINT NOT NULL DEFAULT 0,
+                            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_spend_org ON ai_spend_records (org_id, window_start);
+                    """)
+                    conn.commit()
+        except Exception as exc:
+            logger.debug("Spend table ensure skipped: %s", exc)
+
+    @classmethod
+    def record_spend_to_db(cls, org_id: str, cost_usd: float, total_tokens: int) -> None:
+        """Persist individual spend transaction into PostgreSQL ai_spend_records."""
+        db_url = os.getenv("DATABASE_URL", "postgresql://aev:secret@localhost:5432/aevdb")
+        now = datetime.now(timezone.utc)
+        window_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        try:
+            import psycopg
+            with psycopg.connect(db_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO ai_spend_records (org_id, window_start, total_cost_usd, token_count)
+                        VALUES (%s, %s, %s, %s);
+                    """, (org_id, window_start, cost_usd, total_tokens))
+                    conn.commit()
+        except Exception as exc:
+            logger.debug("Database spend persistence skipped: %s", exc)
+
+    @classmethod
+    def load_spend_from_db(cls, org_id: str) -> float:
+        """Load cumulative spend for an organization from PostgreSQL."""
+        db_url = os.getenv("DATABASE_URL", "postgresql://aev:secret@localhost:5432/aevdb")
+        try:
+            import psycopg
+            with psycopg.connect(db_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT COALESCE(SUM(total_cost_usd), 0.0)
+                        FROM ai_spend_records
+                        WHERE org_id = %s;
+                    """, (org_id,))
+                    row = cur.fetchone()
+                    return float(row[0]) if row and row[0] is not None else 0.0
+        except Exception:
+            return 0.0
+
+    @classmethod
+    def sync_spend_from_db(cls, org_id: str) -> float:
+        """Synchronize in-memory running spend counter from PostgreSQL records."""
+        db_spend = cls.load_spend_from_db(org_id)
+        if db_spend > cls._org_spend.get(org_id, 0.0):
+            cls._org_spend[org_id] = db_spend
+        return cls._org_spend.get(org_id, 0.0)
 
     @classmethod
     def reset_org_spend(cls, org_id: Optional[str] = None) -> None:
@@ -183,12 +254,15 @@ class CostTracker:
             result["budget_cap"] = round(float(budget_cap), 6)
             result["budget_exceeded"] = total_cost > budget_cap
 
-        # Per-org running spend and threshold alerts
+        # Per-org running spend, database persistence, and threshold alerts
         if org_id:
             clean_org = str(org_id).strip()
             prior_spend = cls._org_spend.get(clean_org, 0.0)
             new_spend = round(prior_spend + total_cost, 6)
             cls._org_spend[clean_org] = new_spend
+
+            # P1-3: Persist spend transaction to PostgreSQL
+            cls.record_spend_to_db(clean_org, total_cost, prompt_tokens + completion_tokens)
 
             # Org alerts always use the org's configured cap. The per-request
             # budget_cap (X-Budget-Cap header) must never override it.

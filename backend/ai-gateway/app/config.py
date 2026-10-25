@@ -22,5 +22,9 @@ class Settings:
     JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "aev-pod-delta")
     JWT_AUTH_REQUIRED = os.getenv("JWT_AUTH_REQUIRED", "false").lower() == "true"
 
+    # External Spend Alert Webhooks (P1-3)
+    SLACK_ALERT_WEBHOOK_URL = os.getenv("SLACK_ALERT_WEBHOOK_URL", "").strip()
+    PAGERDUTY_ALERT_WEBHOOK_URL = os.getenv("PAGERDUTY_ALERT_WEBHOOK_URL", "").strip()
+
 
 settings = Settings()

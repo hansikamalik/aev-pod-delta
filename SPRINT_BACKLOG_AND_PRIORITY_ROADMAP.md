@@ -194,10 +194,11 @@ The AI Gateway trusts raw HTTP headers `X-User-ID` and `X-User-Role` completely.
 
 ---
 
-### P1-3 · Persistent Spend Tracking & External Alert Webhooks
+### P1-3 · Persistent Spend Tracking & External Alert Webhooks — **COMPLETED ✅**
 - **Squad:** Squad 1 (AI Gateway)
 - **Effort:** 2 Days
 - **Priority Rating:** ⭐⭐⭐⭐ (4/5 — Required for multi-tenant billing and enterprise ops)
+- **Status:** **COMPLETED ✅** (`alerts.py` with Slack Block Kit + PagerDuty Events v2 dispatchers, `cost_tracker.py` with `record_spend_to_db` / `load_spend_from_db` / `sync_spend_from_db`, `config.py` with `SLACK_ALERT_WEBHOOK_URL` + `PAGERDUTY_ALERT_WEBHOOK_URL`, `main.py` startup wires `dispatch_budget_alert` hook + DB table init, 5 unit tests — all passing)
 
 #### Problem
 - `CostTracker._org_spend` is an in-memory Python dictionary. Every service restart resets all org budgets to $0.00.
@@ -366,7 +367,7 @@ Phase 5 — Deployment & Ops (Days 23–28)
 ### 🟡 P1 — Do Second
 - [ ] **P1-1** Add JWT validation middleware; remove plain-header trust
 - [ ] **P1-2** Redis distributed lock + PostgreSQL-backed sync checkpoints
-- [ ] **P1-3** DB-backed cost aggregation + external alert webhook (Slack / PagerDuty)
+- [x] **P1-3** DB-backed cost aggregation + external alert webhook (Slack / PagerDuty)
 - [ ] **P1-4** Real-time vector freshness event pipeline (60s SLA)
 - [ ] **P1-5** Canonical async Connector SDK reconciliation across all 19+ connectors
 
