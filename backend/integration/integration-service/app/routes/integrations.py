@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query, status
 
+from app.locking import sync_lock_manager
 from app.models import (
     CatalogItem,
     HealthCheckResponse,
@@ -18,6 +19,7 @@ from app.models import (
     IntegrationCreate,
     IntegrationResponse,
     IntegrationUpdate,
+    SyncCheckpoint,
     SyncJobResponse,
     SyncJobStatus,
 )
@@ -158,6 +160,20 @@ def trigger_sync(integration_id: str):
         )
 
     job_id = f"job-{uuid4().hex[:8]}"
+
+    # P1-2: Distributed lock acquisition to prevent concurrent execution on the same connector
+    if not sync_lock_manager.acquire_lock(integration_id, job_id, ttl_seconds=300):
+        active_job = sync_lock_manager.get_active_job(integration_id) or "in_progress"
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": "sync_in_progress",
+                "message": f"A synchronization job is already running for integration '{integration_id}'",
+                "job_id": active_job,
+                "integration_id": integration_id,
+            },
+        )
+
     started_at = datetime.now(timezone.utc)
     t0 = time.time()
 
@@ -174,6 +190,9 @@ def trigger_sync(integration_id: str):
         discovered = 0
         pushed = 0
         errors = [str(exc)]
+    finally:
+        # P1-2: Always release distributed lock when execution finishes
+        sync_lock_manager.release_lock(integration_id, job_id)
 
     duration = round(time.time() - t0, 4)
     finished_at = datetime.now(timezone.utc)
@@ -194,7 +213,38 @@ def trigger_sync(integration_id: str):
     storage.record_job(job_record)
     storage.update_sync_results(integration_id, job_status.value, discovered)
 
+    # P1-2: Record persistent sync checkpoint with high-watermark cursor
+    checkpoint = SyncCheckpoint(
+        integration_id=integration_id,
+        last_sync_time=finished_at,
+        last_cursor=f"cursor-{int(finished_at.timestamp())}-{job_id}",
+        status=job_status.value,
+        assets_discovered=discovered,
+        assets_pushed=pushed,
+        updated_at=finished_at,
+    )
+    storage.record_checkpoint(checkpoint)
+
     return job_record
+
+
+@router.get("/{integration_id}/checkpoint", response_model=SyncCheckpoint, summary="Get sync checkpoint")
+def get_sync_checkpoint(integration_id: str):
+    """Retrieve the latest incremental synchronization checkpoint and high-watermark cursor."""
+    record = storage.get_record(integration_id)
+    if not record:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Integration '{integration_id}' not found",
+        )
+
+    checkpoint = storage.get_checkpoint(integration_id)
+    if not checkpoint:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No sync checkpoint exists yet for integration '{integration_id}'",
+        )
+    return checkpoint
 
 
 @router.patch("/{integration_id}/enable", response_model=IntegrationResponse, summary="Enable integration")

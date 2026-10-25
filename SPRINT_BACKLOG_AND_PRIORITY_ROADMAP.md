@@ -177,10 +177,11 @@ The AI Gateway trusts raw HTTP headers `X-User-ID` and `X-User-Role` completely.
 
 ---
 
-### P1-2 · Redis Distributed Locking & PostgreSQL-Backed Sync Checkpoints
+### P1-2 · Redis Distributed Locking & PostgreSQL-Backed Sync Checkpoints (Completed ✅)
 - **Squad:** Squad 4 (Integrations)
 - **Effort:** 3 Days
 - **Priority Rating:** ⭐⭐⭐⭐ (4/5 — Required before horizontal scaling)
+- **Status:** **COMPLETED ✅** (Implemented `SyncLockManager` with Redis mutex locking and atomic compare-and-delete release in `app/locking.py`, 409 Conflict rejection for concurrent syncs, PostgreSQL `sync_checkpoints` persistent schema with `GET /checkpoint` endpoint, and full unit test suite)
 
 #### Problem
 - `HardenedSyncEngine` uses an in-memory `threading.Lock`. When scaled to multiple containers, concurrent syncs on the same connector will collide.

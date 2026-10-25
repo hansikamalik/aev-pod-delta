@@ -96,3 +96,16 @@ class HealthCheckResponse(BaseModel):
     status: HealthStatus
     checked_at: datetime
     message: str
+
+
+# ---- Checkpoint Schemas (P1-2) ----------------------------------------------
+
+class SyncCheckpoint(BaseModel):
+    integration_id: str
+    last_sync_time: datetime
+    last_cursor: Optional[str] = Field(default=None, description="Incremental high-watermark or pagination cursor")
+    status: str
+    assets_discovered: int = 0
+    assets_pushed: int = 0
+    updated_at: datetime
+

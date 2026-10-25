@@ -7,11 +7,20 @@ from __future__ import annotations
 
 import copy
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from app.models import HealthStatus, IntegrationCreate, IntegrationResponse, IntegrationUpdate, SyncJobResponse, SyncJobStatus
+from app.models import (
+    HealthStatus,
+    IntegrationCreate,
+    IntegrationResponse,
+    IntegrationUpdate,
+    SyncCheckpoint,
+    SyncJobResponse,
+    SyncJobStatus,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,15 +72,39 @@ class IntegrationRecord:
 
 
 class IntegrationStorage:
-    """Thread-safe state repository for integrations and sync jobs."""
+    """Thread-safe state repository for integrations, sync jobs, and checkpoints."""
 
     def __init__(self):
         self._integrations: Dict[str, IntegrationRecord] = {}
         self._sync_jobs: List[SyncJobResponse] = []
+        self._checkpoints: Dict[str, SyncCheckpoint] = {}
+        self._ensure_postgres_tables()
+
+    def _ensure_postgres_tables(self):
+        db_url = os.getenv("DATABASE_URL", "postgresql://aev:secret@localhost:5432/aevdb")
+        try:
+            import psycopg
+            with psycopg.connect(db_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS sync_checkpoints (
+                            integration_id VARCHAR(64) PRIMARY KEY,
+                            last_sync_time TIMESTAMPTZ NOT NULL,
+                            last_cursor TEXT,
+                            status VARCHAR(32) NOT NULL,
+                            assets_discovered INT DEFAULT 0,
+                            assets_pushed INT DEFAULT 0,
+                            updated_at TIMESTAMPTZ NOT NULL
+                        );
+                    """)
+                    conn.commit()
+        except Exception:
+            pass
 
     def clear(self):
         self._integrations.clear()
         self._sync_jobs.clear()
+        self._checkpoints.clear()
 
     # ---- Integration Operations ---------------------------------------------
 
@@ -162,6 +195,75 @@ class IntegrationStorage:
         jobs = list(self._sync_jobs)
         jobs.sort(key=lambda j: j.started_at, reverse=True)
         return jobs[:limit]
+
+    # ---- Checkpoint Operations (P1-2) ---------------------------------------
+
+    def record_checkpoint(self, checkpoint: SyncCheckpoint):
+        """Save sync checkpoint to in-memory store and PostgreSQL table."""
+        self._checkpoints[checkpoint.integration_id] = checkpoint
+        db_url = os.getenv("DATABASE_URL", "postgresql://aev:secret@localhost:5432/aevdb")
+        try:
+            import psycopg
+            with psycopg.connect(db_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO sync_checkpoints (
+                            integration_id, last_sync_time, last_cursor, status,
+                            assets_discovered, assets_pushed, updated_at
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (integration_id) DO UPDATE SET
+                            last_sync_time = EXCLUDED.last_sync_time,
+                            last_cursor = EXCLUDED.last_cursor,
+                            status = EXCLUDED.status,
+                            assets_discovered = EXCLUDED.assets_discovered,
+                            assets_pushed = EXCLUDED.assets_pushed,
+                            updated_at = EXCLUDED.updated_at;
+                    """, (
+                        checkpoint.integration_id,
+                        checkpoint.last_sync_time,
+                        checkpoint.last_cursor,
+                        checkpoint.status,
+                        checkpoint.assets_discovered,
+                        checkpoint.assets_pushed,
+                        checkpoint.updated_at,
+                    ))
+                    conn.commit()
+        except Exception as exc:
+            logger.debug("PostgreSQL checkpoint write skipped: %s", exc)
+
+    def get_checkpoint(self, integration_id: str) -> Optional[SyncCheckpoint]:
+        """Fetch latest sync checkpoint for an integration."""
+        if integration_id in self._checkpoints:
+            return self._checkpoints[integration_id]
+
+        db_url = os.getenv("DATABASE_URL", "postgresql://aev:secret@localhost:5432/aevdb")
+        try:
+            import psycopg
+            with psycopg.connect(db_url) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT integration_id, last_sync_time, last_cursor, status,
+                               assets_discovered, assets_pushed, updated_at
+                        FROM sync_checkpoints
+                        WHERE integration_id = %s;
+                    """, (integration_id,))
+                    row = cur.fetchone()
+                    if row:
+                        cp = SyncCheckpoint(
+                            integration_id=row[0],
+                            last_sync_time=row[1],
+                            last_cursor=row[2],
+                            status=row[3],
+                            assets_discovered=row[4],
+                            assets_pushed=row[5],
+                            updated_at=row[6],
+                        )
+                        self._checkpoints[integration_id] = cp
+                        return cp
+        except Exception:
+            pass
+
+        return None
 
 
 # Global storage singleton
