@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aev-config
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "aev-pod-delta.labels" . | nindent 4 }}
+data:
+  POSTGRES_DB: {{ .Values.postgres.database | quote }}
+  POSTGRES_USER: {{ .Values.postgres.username | quote }}
+  GOOGLE_MODEL: {{ .Values.aiGateway.googleModel | quote }}
+  AI_CONTEXT_URL: "http://ai-context-svc:8001"
+  AI_CONTEXT_TOKEN: "aev-internal-service-token-32chars-min"
+  AEV_DATA_SOURCE: "database"
+  REDIS_URL: "redis://redis-svc:6379/0"
+  DATABASE_URL: "postgresql://{{ .Values.postgres.username }}:$(POSTGRES_PASSWORD)@postgres-svc:5432/{{ .Values.postgres.database }}"
+  JWT_ALGORITHM: "HS256"

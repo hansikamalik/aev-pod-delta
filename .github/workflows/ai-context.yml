@@ -16,41 +16,27 @@ on:
       - '.github/workflows/ai-context.yml'
 
 jobs:
-  validate:
-    name: Validate AI Context
+  test:
+    name: Run AI Context Tests
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/ai-context/CODES/AEV_AI_CONTEXT_Handover
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check AI Context directory
-        shell: bash
-        run: |
-          if [ -d backend/ai-context ]; then
-            echo "AI Context directory exists."
-          else
-            echo "ERROR: backend/ai-context directory not found."
-            exit 1
-          fi
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
 
-      - name: Check for Python project
-        shell: bash
+      - name: Install dependencies
         run: |
-          if [ -f backend/ai-context/requirements.txt ]; then
-            echo "requirements.txt found."
-            python -m pip install --upgrade pip
-            pip install -r backend/ai-context/requirements.txt
-          else
-            echo "No requirements.txt found - dependency installation skipped."
-          fi
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest pytest-asyncio sqlalchemy pgvector psycopg2-binary
 
-      - name: Run tests if available
-        shell: bash
-        run: |
-          if [ -d backend/ai-context/tests ]; then
-            python -m pip install pytest
-            python -m pytest -v backend/ai-context/tests
-          else
-            echo "No AI Context tests found - skipping tests."
-          fi
+      - name: Run tests
+        run: PYTHONPATH=. python -m pytest app/tests/ -v -o pythonpath=.

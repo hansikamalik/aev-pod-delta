@@ -106,3 +106,31 @@ Use the repository's actual Dockerfile and verification script rather than inven
 
 Read the script before running it so you know what it builds, which tests it executes, and what it expects to be installed. Run it from the directory specified in the script or its README. A successful local packaging check proves only the checks that the script performs; it does not by itself establish production readiness.
 
+## 7. Python Wheel Distribution & Installation
+
+The SDK is packaged as the canonical `aev-connector-sdk` Python wheel:
+
+### Building the Wheel
+```bash
+# From repository root or backend/connector-sdk/
+cd backend/connector-sdk
+python3 -m pip install build
+python3 -m build
+```
+This generates the source distribution and `.whl` binary artifact in `backend/connector-sdk/dist/`:
+- `dist/aev_connector_sdk-1.0.0-py3-none-any.whl`
+- `dist/aev_connector_sdk-1.0.0.tar.gz`
+
+### Installing in Services
+Any downstream service or connector package can install the wheel directly:
+```bash
+# Production installation from built wheel
+pip install backend/connector-sdk/dist/aev_connector_sdk-1.0.0-py3-none-any.whl
+
+# Editable local development mode
+pip install -e backend/connector-sdk
+```
+
+The package includes `py.typed` for PEP 561 compliant static type checking with `mypy` or `pyright`.
+
+

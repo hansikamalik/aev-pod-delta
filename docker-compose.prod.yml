@@ -1,0 +1,136 @@
+# AEV Pod Delta — Production Docker Compose
+# Usage: docker compose -f docker-compose.prod.yml up -d
+# Copy .env.example to .env and fill in real values before deploying.
+
+version: "3.9"
+
+networks:
+  aev-internal:
+    driver: bridge
+  aev-public:
+    driver: bridge
+
+volumes:
+  postgres_data:
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Infrastructure
+  # ---------------------------------------------------------------------------
+
+  postgres:
+    image: pgvector/pgvector:pg15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aevdb}
+      POSTGRES_USER: ${POSTGRES_USER:-aev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"   # host-only dev access — remove in hardened prod
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aev} -d ${POSTGRES_DB:-aevdb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - aev-internal
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    ports:
+      - "6379:6379"   # host-only dev access — remove in hardened prod
+    networks:
+      - aev-internal
+
+  # ---------------------------------------------------------------------------
+  # Application Services
+  # ---------------------------------------------------------------------------
+
+  ai-gateway:
+    build:
+      context: ./backend/ai-gateway
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GOOGLE_MODEL: ${GOOGLE_MODEL}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      DATABASE_URL: ${DATABASE_URL}
+      AI_CONTEXT_URL: http://ai-context:8001
+      AI_CONTEXT_TOKEN: ${AI_CONTEXT_TOKEN}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      SLACK_ALERT_WEBHOOK_URL: ${SLACK_ALERT_WEBHOOK_URL}
+      PAGERDUTY_ALERT_WEBHOOK_URL: ${PAGERDUTY_ALERT_WEBHOOK_URL}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - aev-internal
+
+  ai-context:
+    build:
+      context: ./backend/ai-context/CODES/AEV_AI_CONTEXT_Handover
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "8001"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      AEV_API_KEYS_JSON: ${AEV_API_KEYS_JSON}
+      AEV_DATA_SOURCE: ${AEV_DATA_SOURCE:-database}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - aev-internal
+
+  integration-service:
+    build:
+      context: ./backend/integration/integration-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    expose:
+      - "8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - aev-internal
+
+  # ---------------------------------------------------------------------------
+  # Ingress (NGINX)
+  # ---------------------------------------------------------------------------
+
+  ingress:
+    image: nginx:1.25-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      # - "443:443"   # Uncomment for TLS — see nginx/nginx.conf TLS section
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - ai-gateway
+      - ai-context
+      - integration-service
+    networks:
+      - aev-internal
+      - aev-public

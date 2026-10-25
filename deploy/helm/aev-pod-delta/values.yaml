@@ -1,0 +1,94 @@
+global:
+  namespace: aev-system
+  imageRegistry: ghcr.io/aev-pod-delta
+
+postgres:
+  enabled: true
+  image: pgvector/pgvector:pg15
+  storage: 10Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+  database: aevdb
+  username: aev
+
+redis:
+  enabled: true
+  image: redis:7-alpine
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+aiGateway:
+  enabled: true
+  image: ai-gateway
+  tag: latest
+  replicas: 2
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    cpuThreshold: 70
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  googleModel: gemma-4-31b-it
+
+aiContext:
+  enabled: true
+  image: ai-context
+  tag: latest
+  replicas: 1
+  hpa:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 4
+    cpuThreshold: 75
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+integrationService:
+  enabled: true
+  image: integration-service
+  tag: latest
+  replicas: 1
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+ingress:
+  enabled: true
+  className: nginx
+  host: aev.internal
+  tls:
+    enabled: false
+    secretName: aev-tls
+
+secrets:
+  # Provide these securely at install time via --set or external Secret Store
+  postgresPassword: "secret"
+  googleApiKey: "your_google_api_key"
+  jwtSecret: "your-jwt-secret-minimum-32-chars"
+  slackAlertWebhookUrl: ""
+  pagerdutyAlertWebhookUrl: ""
