@@ -5,8 +5,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "connector-sdk"
-version = "0.1.0"
-description = "Shared Python Connector SDK"
+version = "1.0.0"
+description = "Canonical Shared Python Connector SDK (v1.0 Frozen Interface)"
 readme = "connector_sdk/README.md"
 requires-python = ">=3.12"
 dependencies = [
