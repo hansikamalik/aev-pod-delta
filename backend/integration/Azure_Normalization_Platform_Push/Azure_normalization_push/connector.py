@@ -2,8 +2,17 @@ from datetime import datetime
 from typing import Iterable, Dict, Any, Optional
 import logging
 
-from sdk.connector import Connector
-from sdk.models import Asset, AssetType
+try:
+    from connector_sdk.connector import Connector
+    from connector_sdk.models import Asset, AssetType
+except ImportError:
+    try:
+        from sdk.connector import Connector
+        from sdk.models import Asset, AssetType
+    except ImportError:
+        Connector = object  # type: ignore
+        Asset = object  # type: ignore
+        AssetType = object  # type: ignore
 
 logger = logging.getLogger(__name__)
 

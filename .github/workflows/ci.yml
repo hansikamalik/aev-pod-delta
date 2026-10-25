@@ -112,7 +112,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pytest pytest-asyncio sqlalchemy pgvector psycopg2-binary
+          pip install fastapi uvicorn pydantic python-dotenv httpx pytest pytest-asyncio \
+              sqlalchemy psycopg2-binary pgvector greenlet typing_extensions psycopg[binary]
 
       - name: Run tests
         run: PYTHONPATH=. python -m pytest app/tests/ -v -o pythonpath=.
