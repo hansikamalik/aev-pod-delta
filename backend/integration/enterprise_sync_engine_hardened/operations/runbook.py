@@ -175,7 +175,13 @@ def run_full_regression_suite(webhook_url: str = None):
     print_banner("Executing Full Dynamic Regression")
     regression_script = ROOT_DIR / "operations" / "full_regression.py"
     if regression_script.exists():
-        exit_code = os.system(f"PYTHONPATH={ROOT_DIR} python3 {regression_script}")
+        # Cross-platform subprocess: avoids Unix-only `PYTHONPATH=val cmd` shell prefix.
+        # Uses sys.executable so the correct Python interpreter is picked up on
+        # both Linux (`python3`) and Windows (`python` / venv python).
+        import subprocess
+        env = {**os.environ, "PYTHONPATH": str(ROOT_DIR)}
+        result = subprocess.run([sys.executable, str(regression_script)], env=env)
+        exit_code = result.returncode
         status = "PASSED" if exit_code == 0 else "FAILED"
         msg = "Full regression suite executed and evidence report exported under docs/evidence/full_regression_report.json."
         send_webhook_notification(webhook_url, "Full Regression Suite", status, msg)

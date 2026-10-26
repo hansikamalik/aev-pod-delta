@@ -60,6 +60,122 @@ Invoke-WebRequest -Uri http://localhost:8003/health | Select-Object -Expand Cont
 
 ---
 
+## Live Stack: Running with Uvicorn / Docker
+
+The `curl` commands throughout this guide hit the **real running services over HTTP** — they are not mock calls. Before using them, you need the services running. There are two ways to do this:
+
+---
+
+### Mode A — Docker Compose (Recommended, All Services at Once)
+
+This starts all three microservices, PostgreSQL 15 with pgvector, and Redis 7 together in containers. Each service runs uvicorn inside its container.
+
+```bash
+# Start everything (first time — builds images, takes 3–5 minutes)
+docker compose up --build -d
+
+# After first build, subsequent starts are instant
+docker compose up -d
+```
+
+Verify all containers are healthy:
+```bash
+docker ps
+```
+
+All five should show `Up` or `healthy`:
+```
+aev_postgres            → PostgreSQL 15 + pgvector  (port 5432)
+aev_redis               → Redis 7                   (port 6379)
+aev_ai_gateway          → uvicorn on port 8001
+aev_ai_context          → uvicorn on port 8002
+aev_integration_service → uvicorn on port 8003
+```
+
+Seed the database once after startup:
+```bash
+DATABASE_URL="postgresql://aev:secret@localhost:5432/aevdb" python3 scripts/seed_database.py
+```
+
+Watch live server logs during the demo (optional but impressive to show):
+```bash
+# All services at once
+docker compose logs -f
+
+# Or watch a specific service
+docker compose logs -f ai-gateway
+docker compose logs -f ai-context
+docker compose logs -f integration-service
+```
+
+Every `curl` command you run will appear in real-time in these logs — the audience can see the server processing requests live.
+
+---
+
+### Mode B — Direct Uvicorn (Without Docker)
+
+Use this if Docker is unavailable. You need PostgreSQL and Redis running locally, then start each service manually in separate terminals.
+
+**Prerequisites:**
+```bash
+# Make sure PostgreSQL (port 5432) and Redis (port 6379) are running locally
+# Then install dependencies for each service
+```
+
+**Terminal 1 — AI Gateway (port 8001):**
+```bash
+cd backend/ai-gateway
+pip install -r requirements.txt
+export GOOGLE_API_KEY="your_key_here"
+export DATABASE_URL="postgresql://aev:secret@localhost:5432/aevdb"
+export REDIS_URL="redis://localhost:6379"
+export AI_CONTEXT_URL="http://localhost:8002"
+export AI_CONTEXT_TOKEN="aev-internal-service-token-32chars-min"
+uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+```
+
+**Terminal 2 — AI Context (port 8002):**
+```bash
+cd backend/ai-context/CODES/AEV_AI_CONTEXT_Handover
+pip install -r requirements.txt
+export DATABASE_URL="postgresql+psycopg2://aev:secret@localhost:5432/aevdb"
+export AEV_API_KEYS_JSON='{"aev-internal-service-token-32chars-min":{"user_id":"admin","role":"admin"}}'
+export AEV_DATA_SOURCE="database"
+uvicorn app.main:app --host 0.0.0.0 --port 8002 --reload
+```
+
+**Terminal 3 — Integration Service (port 8003):**
+```bash
+cd backend/integration/integration-service
+pip install -r requirements.txt
+export DATABASE_URL="postgresql://aev:secret@localhost:5432/aevdb"
+export REDIS_URL="redis://localhost:6379"
+uvicorn app.main:app --host 0.0.0.0 --port 8003 --reload
+```
+
+**Terminal 4 — Seed the database:**
+```bash
+DATABASE_URL="postgresql://aev:secret@localhost:5432/aevdb" python3 scripts/seed_database.py
+```
+
+After all three terminals show `Uvicorn running on http://0.0.0.0:800x`, the health checks and all `curl` commands in this guide will work exactly the same as with Docker.
+
+---
+
+### What "Live" Means for Each curl Command
+
+Every `curl` command in the sections below makes a **real HTTP request** to the uvicorn server:
+
+| curl hits | Goes to | Processed by |
+|---|---|---|
+| `http://localhost:8001/copilot/query` | AI Gateway uvicorn | FastAPI → Guardrails → Gemma LLM → PostgreSQL |
+| `http://localhost:8002/copilot/asset-search` | AI Context uvicorn | FastAPI → pgvector cosine distance → PostgreSQL |
+| `http://localhost:8003/api/v1/integrations` | Integration Service uvicorn | FastAPI → Redis lock → in-memory storage |
+
+The audience can open `http://localhost:8001/docs` in a browser to see the auto-generated Swagger UI and interact with the live API directly — no curl needed.
+
+---
+
 ## Demo Overview
 
 The demo runs through 7 sections in approximately 20–25 minutes:
