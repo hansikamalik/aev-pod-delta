@@ -3,7 +3,7 @@
 [![CI](https://github.com/hansikamalik/aev-pod-delta/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/hansikamalik/aev-pod-delta/actions/workflows/ci.yml)
 [![Branch](https://img.shields.io/badge/branch-develop-blue.svg)](https://github.com/hansikamalik/aev-pod-delta/tree/develop)
 [![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](https://github.com/hansikamalik/aev-pod-delta)
-[![Status](https://img.shields.io/badge/status-100%25%20Production%20Ready-brightgreen.svg)](SPRINT_BACKLOG_AND_PRIORITY_ROADMAP.md)
+[![Status](https://img.shields.io/badge/status-100%25%20Production%20Ready-brightgreen.svg)](docs/guides/SPRINT_BACKLOG_AND_PRIORITY_ROADMAP.md)
 
 Welcome to **Pod Delta (Module 4 Backend)** of the Adversarial Exposure Validation (AEV) Platform. Pod Delta provides the user experience layer, AI-powered security investigation Copilot, semantic vector context retrieval, and enterprise connector integration hub.
 
@@ -134,10 +134,13 @@ Automated CI executes on every push and pull request via [`.github/workflows/ci.
 
 | Guide | Description |
 |---|---|
-| [`SETUP.md`](SETUP.md) | Master step-by-step setup guide for all services, environment variables, and local execution |
-| [`HANDOVER_EXECUTIVE_GUIDE.md`](HANDOVER_EXECUTIVE_GUIDE.md) | Executive presentation runbook and unified dataset verification walkthrough |
-| [`DEVELOPER_HANDOVER_QUICKSTART.md`](DEVELOPER_HANDOVER_QUICKSTART.md) | Engineering deep-dive into unified datasets, demo runner, and cross-service data models |
-| [`SPRINT_BACKLOG_AND_PRIORITY_ROADMAP.md`](SPRINT_BACKLOG_AND_PRIORITY_ROADMAP.md) | Complete priority roadmap tracking all P0, P1, and P2 deliverables |
+| [`docs/guides/MACHINE_SETUP_GUIDE.md`](docs/guides/MACHINE_SETUP_GUIDE.md) | Full developer onboarding & clean-machine setup guide for Windows & Linux |
+| [`docs/guides/DEMO_GUIDE.md`](docs/guides/DEMO_GUIDE.md) | Live handover demonstration script, talking points, and curl commands |
+| [`docs/guides/PROJECT_EXPLAINER.md`](docs/guides/PROJECT_EXPLAINER.md) | Plain-language deep dive explaining all 5 components, data flow, and architecture |
+| [`docs/guides/SETUP.md`](docs/guides/SETUP.md) | Master step-by-step setup guide for all services, environment variables, and local execution |
+| [`docs/guides/HANDOVER_EXECUTIVE_GUIDE.md`](docs/guides/HANDOVER_EXECUTIVE_GUIDE.md) | Executive presentation runbook and unified dataset verification walkthrough |
+| [`docs/guides/DEVELOPER_HANDOVER_QUICKSTART.md`](docs/guides/DEVELOPER_HANDOVER_QUICKSTART.md) | Engineering deep-dive into unified datasets, demo runner, and cross-service data models |
+| [`docs/guides/SPRINT_BACKLOG_AND_PRIORITY_ROADMAP.md`](docs/guides/SPRINT_BACKLOG_AND_PRIORITY_ROADMAP.md) | Complete priority roadmap tracking all P0, P1, and P2 deliverables |
 | [`backend/ai-gateway/README.md`](backend/ai-gateway/README.md) | AI Gateway architecture, dynamic tools, guardrails, JWT auth, and spend alerts |
 | [`backend/ai-context/README.md`](backend/ai-context/README.md) | AI Context pgvector setup, memory store, templates, and 60s freshness pipeline |
 | [`backend/connector-sdk/CONNECTOR_SDK_GUIDE.md`](backend/connector-sdk/CONNECTOR_SDK_GUIDE.md) | Connector SDK v1.0.0 developer contract, async lifecycle, wheel build & install |
