@@ -6,7 +6,8 @@ the hardened sync engine and that the engine's incremental-sync guarantees
 remain intact.
 """
 
-from datetime import datetime, timezone
+import asyncio
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -14,34 +15,26 @@ from microsoft365_connector.connector import Microsoft365Connector
 from microsoft365_connector.credentials import VaultClient
 from tests.fixtures import sample_config
 
-# Hardened Sync Engine
 from sync_engine.engine import HardenedSyncEngine
-from sync_engine.models import SyncResult
+from sync_engine.checkpoint_store import CheckpointStore
 
 
 class FakePlatformClient:
-    """
-    Minimal platform client used by the regression test.
-
-    The hardened Sync Engine pushes normalized events through this client.
-    """
+    """Minimal synchronous platform client for hardened sync regression tests."""
 
     def __init__(self, fail_push=False):
         self.pushed = []
         self.checkpoint = None
         self.fail_push = fail_push
 
-    async def push(self, events):
+    def push_assets(self, assets):
         if self.fail_push:
             raise RuntimeError("Simulated platform push failure")
 
-        self.pushed.extend(events)
-        return len(events)
+        self.pushed.extend(assets)
+        return len(assets)
 
-    async def get_checkpoint(self, connector):
-        return self.checkpoint
-
-    async def save_checkpoint(self, connector, checkpoint):
+    def save_checkpoint(self, checkpoint):
         self.checkpoint = checkpoint
 
 
@@ -51,9 +44,10 @@ def m365_connector():
     Create the Microsoft 365 connector using the same configuration
     used by the connector's existing test suite.
     """
-    vault = VaultClient()
+    config = sample_config()
+    vault = MagicMock(spec=VaultClient)
     connector = Microsoft365Connector(
-        sample_config(),
+        config,
         vault_client=vault,
     )
     return connector
@@ -89,10 +83,12 @@ def test_microsoft365_initial_sync_with_hardened_engine(m365_connector):
     engine = HardenedSyncEngine(
         "microsoft365",
         client,
-        retry_base_delay_seconds=0,
+        checkpoint_store=CheckpointStore(
+            storage_path=f"test_checkpoint_m365_{id(client)}.json"
+        ),
     )
 
-    async def fetch(start_time, end_time):
+    async def fetch():
         return events
 
     result = engine.execute_incremental_sync(fetch)
@@ -123,10 +119,12 @@ def test_microsoft365_second_sync_is_idempotent(m365_connector):
     engine = HardenedSyncEngine(
         "microsoft365",
         client,
-        retry_base_delay_seconds=0,
+        checkpoint_store=CheckpointStore(
+            storage_path=f"test_checkpoint_m365_{id(client)}.json"
+        ),
     )
 
-    async def fetch(start_time, end_time):
+    async def fetch():
         return events
 
     import asyncio
@@ -153,7 +151,7 @@ def test_microsoft365_second_sync_is_idempotent(m365_connector):
     assert len(client.pushed) == 2
 
 
-def test_microsoft365_new_record_is_pushed():
+def test_microsoft365_new_record_is_pushed(tmp_path):
     """
     Regression:
     After the initial Microsoft 365 sync, a newly discovered resource
@@ -165,7 +163,9 @@ def test_microsoft365_new_record_is_pushed():
     engine = HardenedSyncEngine(
         "microsoft365",
         client,
-        retry_base_delay_seconds=0,
+        checkpoint_store=CheckpointStore(
+        storage_path=str(tmp_path / "checkpoint.json")
+        ),
     )
 
     first_events = [
@@ -181,10 +181,10 @@ def test_microsoft365_new_record_is_pushed():
 
     import asyncio
 
-    async def first_fetch(start_time, end_time):
+    async def first_fetch():
         return first_events
 
-    async def second_fetch(start_time, end_time):
+    async def second_fetch():
         return second_events
 
     first_result = asyncio.run(
@@ -220,14 +220,16 @@ def test_microsoft365_failed_push_does_not_advance_checkpoint():
     engine = HardenedSyncEngine(
         "microsoft365",
         client,
-        retry_base_delay_seconds=0,
+        checkpoint_store=CheckpointStore(
+            storage_path=f"test_checkpoint_m365_{id(client)}.json"
+        ),
     )
 
     events = [
         make_event("m365-user-001", 10),
     ]
 
-    async def fetch(start_time, end_time):
+    async def fetch():
         return events
 
     import asyncio
@@ -254,12 +256,14 @@ def test_microsoft365_empty_incremental_sync_does_not_move_checkpoint():
     engine = HardenedSyncEngine(
         "microsoft365",
         client,
-        retry_base_delay_seconds=0,
+        checkpoint_store=CheckpointStore(
+            storage_path=f"test_checkpoint_m365_{id(client)}.json"
+        ),
     )
 
     import asyncio
 
-    async def fetch(start_time, end_time):
+    async def fetch():
         return []
 
     result = asyncio.run(

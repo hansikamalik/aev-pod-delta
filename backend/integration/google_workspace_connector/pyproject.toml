@@ -9,10 +9,6 @@ description = "AEV Platform Google Workspace integration connector"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-  # google_workspace_auth is a sibling local package in this monorepo.
-  # It is NOT published to PyPI. Install it separately before this package:
-  #   pip install -e ../google_workspace_auth
-  # Tests load it via conftest.py PYTHONPATH injection (cross-platform safe).
   "google-api-python-client>=2.140.0",
   "google-auth>=2.30.0",
   "pydantic>=2.7.0",

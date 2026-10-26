@@ -1,14 +1,13 @@
 from __future__ import annotations
 
+from sync_engine.checkpoint_store import CheckpointStore
 from unittest.mock import MagicMock
 
 import pytest
 
 from google_workspace_connector.connector import GoogleWorkspaceConnector
 from google_workspace_connector.state import InMemorySyncStateStore
-
 from sync_engine.engine import HardenedSyncEngine
-from sync_engine.models import Checkpoint
 
 
 class FakeAuth:
@@ -111,9 +110,6 @@ def make_event(
 @pytest.fixture
 def google_connector(config):
     events = [make_event()]
-    events = [
-        make_event(),
-    ]
 
     def client_factory(credentials):
         return FakeClients(credentials, events)
@@ -126,20 +122,33 @@ def google_connector(config):
 
 
 def build_fetch(connector, config):
-    async def fetch(**kwargs):
-        return [event async for event in connector.ingest(config)]
+    async def fetch():
+        return [
+            event
+            async for event in connector.ingest(config)
+        ]
+
     return fetch
-    
 
 @pytest.mark.asyncio
-async def test_google_workspace_incremental_sync(google_connector, config):
+async def test_google_workspace_initial_sync(
+    google_connector,
+    config,
+    tmp_path,
+):
     platform = FakePlatformClient()
+
     engine = HardenedSyncEngine(
         "google_workspace",
         platform,
+        checkpoint_store=CheckpointStore(
+            storage_path=str(tmp_path / "checkpoint.json")
+        ),
         retry_base_delay_seconds=0,
     )
+
     fetch = build_fetch(google_connector, config)
+
     result = await engine.execute_incremental_sync(fetch)
 
     assert result.status == "success"
@@ -148,43 +157,24 @@ async def test_google_workspace_incremental_sync(google_connector, config):
     assert len(platform.pushed_assets) == 1
     assert platform.checkpoint is not None
 
-
 @pytest.mark.asyncio
 async def test_google_workspace_second_sync_is_idempotent(
     google_connector,
     config,
+    tmp_path,
 ):
     platform = FakePlatformClient()
 
     engine = HardenedSyncEngine(
         "google_workspace",
         platform,
+        checkpoint_store=CheckpointStore(
+            storage_path=str(tmp_path / "checkpoint.json")
+        ),
         retry_base_delay_seconds=0,
     )
 
     fetch = build_fetch(google_connector, config)
-    async def fetch():
-        return [
-            event
-            async for event in google_connector.ingest(
-                {
-                    "customer_id": "my_customer",
-                    "domain": "example.com",
-                    "admin_user": "admin@example.com",
-                    "_credentials": {
-                        "service_account": {
-                            "client_email": "svc@example.com",
-                            "private_key_ref": "vault://google-workspace/service-account",
-                        }
-                    },
-                    "sync": {
-                        "users": False,
-                        "audit_logs": True,
-                        "audit_application": "login",
-                    },
-                }
-            )
-        ]
 
     first = await engine.execute_incremental_sync(fetch)
 
@@ -198,15 +188,13 @@ async def test_google_workspace_second_sync_is_idempotent(
     assert second.assets_skipped == 1
     assert len(platform.pushed_assets) == 1
 
-
 @pytest.mark.asyncio
 async def test_google_workspace_new_event_is_pushed_incrementally(
+    google_connector,
     config,
+    tmp_path,
 ):
     events = [make_event()]
-    events = [
-        make_event(),
-    ]
 
     def client_factory(credentials):
         return FakeClients(credentials, events)
@@ -222,6 +210,9 @@ async def test_google_workspace_new_event_is_pushed_incrementally(
     engine = HardenedSyncEngine(
         "google_workspace",
         platform,
+        checkpoint_store=CheckpointStore(
+            storage_path=str(tmp_path / "checkpoint.json")
+        ),
         retry_base_delay_seconds=0,
     )
 
@@ -230,14 +221,6 @@ async def test_google_workspace_new_event_is_pushed_incrementally(
     first = await engine.execute_incremental_sync(fetch)
 
     assert first.status == "success"
-    async def fetch():
-        return [
-            event
-            async for event in connector.ingest(config)
-        ]
-
-    first = await engine.execute_incremental_sync(fetch)
-
     assert first.assets_pushed == 1
 
     events.append(
@@ -253,10 +236,11 @@ async def test_google_workspace_new_event_is_pushed_incrementally(
     assert second.assets_pushed == 1
     assert len(platform.pushed_assets) == 2
 
-
 @pytest.mark.asyncio
 async def test_google_workspace_duplicate_events_are_deduplicated(
+    google_connector,
     config,
+    tmp_path,
 ):
     duplicate = make_event()
 
@@ -279,6 +263,9 @@ async def test_google_workspace_duplicate_events_are_deduplicated(
     engine = HardenedSyncEngine(
         "google_workspace",
         platform,
+        checkpoint_store=CheckpointStore(
+            storage_path=str(tmp_path / "checkpoint.json")
+        ),
         retry_base_delay_seconds=0,
     )
 
@@ -293,7 +280,7 @@ async def test_google_workspace_duplicate_events_are_deduplicated(
 
 
 @pytest.mark.asyncio
-async def test_google_workspace_empty_sync(config):
+async def test_google_workspace_empty_sync(google_connector,config,tmp_path):
     events = []
 
     def client_factory(credentials):
@@ -310,6 +297,9 @@ async def test_google_workspace_empty_sync(config):
     engine = HardenedSyncEngine(
         "google_workspace",
         platform,
+        checkpoint_store=CheckpointStore(
+            storage_path=str(tmp_path / "checkpoint.json")
+        ),
         retry_base_delay_seconds=0,
     )
 
@@ -324,7 +314,9 @@ async def test_google_workspace_empty_sync(config):
 
 @pytest.mark.asyncio
 async def test_google_workspace_push_failure_preserves_checkpoint(
+    google_connector,
     config,
+    tmp_path,
     ):
     events = [make_event()]
     def client_factory(credentials):
@@ -345,6 +337,9 @@ async def test_google_workspace_push_failure_preserves_checkpoint(
     engine = HardenedSyncEngine(
         "google_workspace",
         platform,
+        checkpoint_store=CheckpointStore(
+            storage_path=str(tmp_path / "checkpoint.json")
+        ),
         retry_base_delay_seconds=0,
     )
 
