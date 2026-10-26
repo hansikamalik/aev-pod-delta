@@ -1,3 +1,4 @@
+import inspect
 import json
 import datetime
 import time
@@ -7,6 +8,8 @@ from sync_engine.checkpoint_store import CheckpointStore
 from sync_engine.distributed_lock import DistributedLockManager
 from monitoring.metrics_alerter import MetricsAlerter
 from monitoring.monitoring_api import SyncMonitoringAPI
+from core.vault_client import VaultClient
+from core.audit_sanitizer import VaultAuditSanitizer
 
 
 class HardenedSyncEngine:
@@ -30,6 +33,8 @@ class HardenedSyncEngine:
         self.lock_manager = lock_manager or DistributedLockManager()
         self.alerter = MetricsAlerter()
         self.monitoring_api = monitoring_api or SyncMonitoringAPI()
+        self.vault_client = VaultClient()
+        self.audit_sanitizer = VaultAuditSanitizer()
 
     async def execute_incremental_sync(
         self,
@@ -103,7 +108,10 @@ class HardenedSyncEngine:
                 assets = [event for _, event in unique_events]
 
                 try:
-                    self.platform_client.push_assets(assets)
+                    push_result = self.platform_client.push_assets(assets)
+
+                    if inspect.isawaitable(push_result):
+                        await push_result
                 except Exception as exc:
                     message = f"Platform push failed: {exc}"
                     elapsed = time.time() - start_ts
@@ -128,7 +136,67 @@ class HardenedSyncEngine:
                         errors=[message],
                     )
 
-            # Only mark events as processed after the push succeeds.
+            # Verify Vault token redaction before advancing the checkpoint.
+            try:
+                credentials = self.vault_client.get_credentials(self.connector_id)
+                token = credentials["active_token"]
+
+                audit_message = (
+                    f"Connector {self.connector_id} authenticated using token {token}"
+                )
+                sanitized_message = self.audit_sanitizer.sanitize(audit_message)
+
+                vault_audit_passed = (
+                    bool(token)
+                    and token not in sanitized_message
+                    and "[REDACTED]" in sanitized_message
+                )
+
+                if not vault_audit_passed:
+                    message = "Vault audit verification failed; checkpoint not advanced."
+
+                    self.alerter.report_sync_failure(self.connector_id, message)
+                    self.monitoring_api.record_sync_event(
+                        self.connector_id,
+                        "failed",
+                        time.time() - start_ts,
+                        0,
+                        error=message,
+                    )
+
+                    return SyncResult(
+                        connector=self.connector_id,
+                        status="failed",
+                        assets_discovered=assets_discovered,
+                        assets_pushed=0,
+                        assets_skipped=assets_skipped,
+                        errors=[message],
+                        vault_audit_passed=vault_audit_passed,
+                    )
+
+            except Exception as exc:
+                message = f"Vault audit verification failed: {exc}"
+
+                self.alerter.report_sync_failure(self.connector_id, message)
+                self.monitoring_api.record_sync_event(
+                    self.connector_id,
+                    "failed",
+                    time.time() - start_ts,
+                    0,
+                    error=message,
+                )
+
+                return SyncResult(
+                    connector=self.connector_id,
+                    status="failed",
+                    assets_discovered=assets_discovered,
+                    assets_pushed=0,
+                    assets_skipped=assets_skipped,
+                    errors=[message],
+                    vault_audit_passed=vault_audit_passed,
+                )
+
+            # Only mark events as processed after push and audit succeed.
             processed_ids.update(batch_ids)
 
             now_iso = datetime.datetime.now(
@@ -187,7 +255,7 @@ class HardenedSyncEngine:
                 high_water_mark=now_iso,
                 last_sync_at=now_iso,
                 errors=[],
-                vault_audit_passed=True,
+                vault_audit_passed=vault_audit_passed,
                 started_at=start_time.isoformat(),
                 finished_at=now_iso,
             )

@@ -20,7 +20,7 @@ class SyncResult(BaseModel):
     high_water_mark: Optional[str] = None
     last_sync_at: Optional[str] = None
     errors: List[str] = Field(default_factory=list)
-    vault_audit_passed: bool = True
+    vault_audit_passed: bool = False
     started_at: Optional[str] = None
     finished_at: Optional[str] = None
 
