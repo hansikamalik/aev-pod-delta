@@ -1,6 +1,9 @@
-# Editable install of the frozen SDK contract. Assumes connector_sdk is
-# a sibling directory in the same monorepo checkout.
--e ../connector_sdk
+# connector_sdk is a sibling local package in this monorepo.
+# Install it separately before this file (cross-platform, works on Windows + Linux):
+#   pip install -e ../connector_sdk        (Linux / macOS / Git Bash)
+#   pip install -e ..\connector_sdk       (Windows CMD / PowerShell)
+# The -e flag here is intentionally removed to avoid relative-path resolution
+# failures on Windows; install connector_sdk explicitly in your dev setup.
 
 pydantic>=2.0
 requests>=2.31
