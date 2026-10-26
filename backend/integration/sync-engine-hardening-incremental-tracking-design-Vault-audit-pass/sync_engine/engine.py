@@ -154,17 +154,17 @@ class HardenedSyncEngine:
             )
 
     async def execute_incremental_sync(
-        self,
-        fetch_events_fn,
-        default_lookback_days: int = 7,
-        force_full: bool = False,
+    self,
+    fetch_events_fn,
+    default_lookback_days: int = 7,
+    force_full: bool = False,
     ) -> SyncResult:
         errors: List[str] = []
         assets_skipped = 0
 
         existing_checkpoint = self.platform_client.get_checkpoint(
-            self.connector_id
-        )
+        self.connector_id
+    )
         now = datetime.now(timezone.utc)
 
         if (
@@ -181,28 +181,27 @@ class HardenedSyncEngine:
                 - timedelta(seconds=self.lookback_buffer_seconds)
             )
 
-        raw_events = None
+        raw_events: Optional[List[Dict[str, Any]]] = None
         last_error = None
 
         for attempt in range(3):
             try:
-                raw_events = fetch_events_fn(
+                fetched_events = fetch_events_fn(
                     start_time.isoformat(),
                     now.isoformat(),
                 )
 
-                if inspect.isawaitable(raw_events):
-                    raw_events = await raw_events
+                if inspect.isawaitable(fetched_events):
+                    fetched_events = await fetched_events
 
-                raw_events = cast(List[Dict[str, Any]], raw_events)
-
+                raw_events = cast(List[Dict[str, Any]], fetched_events)
                 break
 
             except Exception as exc:
                 last_error = exc
 
                 if attempt < 2 and self.retry_base_delay_seconds > 0:
-                    await asyncio.sleep(
+                   await asyncio.sleep(
                         self.retry_base_delay_seconds * (2 ** attempt)
                     )
 
@@ -218,12 +217,43 @@ class HardenedSyncEngine:
 
         assets = self.process_events(raw_events)
         assets_discovered = len(raw_events)
+
+        metadata = (
+            existing_checkpoint.metadata
+            if existing_checkpoint is not None
+            else {}
+        )
+        previously_pushed_ids = set(
+            metadata.get("pushed_asset_ids", [])
+        )
+
+        seen_ids = set()
+        assets_to_push = []
+
+        for asset in assets:
+            asset_id = str(asset.id)
+
+            if asset_id in seen_ids:
+                assets_skipped += 1
+                continue
+
+            seen_ids.add(asset_id)
+
+            if asset_id in previously_pushed_ids:
+                assets_skipped += 1
+                continue
+
+            assets_to_push.append(asset)
+
         assets_pushed = 0
 
         try:
-            if assets:
-                self._push_to_platform(self.connector_id, assets)
-                assets_pushed = len(assets)
+            if assets_to_push:
+                self._push_to_platform(
+                    self.connector_id,
+                    assets_to_push,
+                )
+                assets_pushed = len(assets_to_push)
 
             newest_event_time = max(
                 (
@@ -234,15 +264,26 @@ class HardenedSyncEngine:
                 default=start_time,
             )
 
+            updated_pushed_ids = previously_pushed_ids.union(
+                str(asset.id) for asset in assets_to_push
+            )
+
             new_checkpoint = Checkpoint(
                 connector=self.connector_id,
                 hwm=max(start_time, newest_event_time),
+                metadata={
+                    **metadata,
+                    "pushed_asset_ids": sorted(updated_pushed_ids),
+                    "last_run_pushed_count": assets_pushed,
+                },
             )
 
             self.platform_client.save_checkpoint(new_checkpoint)
 
         except Exception as exc:
-            errors.append(f"Failed to push assets or save checkpoint: {exc}")
+            errors.append(
+                f"Failed to push assets or save checkpoint: {exc}"
+            )
 
             return SyncResult(
                 status="partial_failure",

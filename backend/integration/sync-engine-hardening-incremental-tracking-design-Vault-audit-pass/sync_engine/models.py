@@ -28,6 +28,7 @@ class Checkpoint(BaseModel):
 
     connector_id: str = Field(alias="connector")
     high_water_mark: datetime = Field(alias="hwm")
+    metadata: Dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="before")
     @classmethod

@@ -6,7 +6,6 @@ import pytest
 
 from google_workspace_connector.connector import GoogleWorkspaceConnector
 from google_workspace_connector.state import InMemorySyncStateStore
-
 from sync_engine.engine import HardenedSyncEngine
 
 
@@ -41,7 +40,7 @@ class FakeReports:
         self.events = events
 
     def activities(self):
-        return FakeActivities(self._events)
+        return FakeActivities(self.events)
 
 
 class FakeClients:
@@ -121,8 +120,12 @@ def google_connector(config):
 
 
 def build_fetch(connector, config):
-    async def fetch(**kwargs):
-        return [event async for event in connector.ingest(config)]
+    async def fetch(start_time, end_time):
+        return [
+            event
+            async for event in connector.ingest(config)
+        ]
+
     return fetch
 
 @pytest.mark.asyncio
@@ -138,46 +141,11 @@ async def test_google_workspace_initial_sync(google_connector, config):
     fetch = build_fetch(google_connector, config)
 
     result = await engine.execute_incremental_sync(fetch)
-
     assert result.status == "success"
     assert result.assets_discovered == 1
     assert result.assets_pushed == 1
     assert len(platform.pushed_assets) == 1
     assert platform.checkpoint is not None
-
-    async def fetch():
-        return [
-            event
-            async for event in google_connector.ingest(
-                {
-                    **{
-                        "customer_id": "my_customer",
-                        "domain": "example.com",
-                        "admin_user": "admin@example.com",
-                        "_credentials": {
-                            "service_account": {
-                                "client_email": "svc@example.com",
-                                "private_key_ref": "vault://google-workspace/service-account",
-                            }
-                        },
-                        "sync": {
-                            "users": False,
-                            "audit_logs": True,
-                            "audit_application": "login",
-                        },
-                    }
-                }
-            )
-        ]
-
-    result = await engine.execute_incremental_sync(fetch)
-
-    assert result.status == "success"
-    assert result.assets_discovered == 1
-    assert result.assets_pushed == 1
-    assert len(platform.pushed_assets) == 1
-    assert platform.checkpoint is not None
-
 
 @pytest.mark.asyncio
 async def test_google_workspace_second_sync_is_idempotent(
@@ -205,41 +173,6 @@ async def test_google_workspace_second_sync_is_idempotent(
     assert second.assets_pushed == 0
     assert second.assets_skipped == 1
     assert len(platform.pushed_assets) == 1
-    async def fetch():
-        return [
-            event
-            async for event in google_connector.ingest(
-                {
-                    "customer_id": "my_customer",
-                    "domain": "example.com",
-                    "admin_user": "admin@example.com",
-                    "_credentials": {
-                        "service_account": {
-                            "client_email": "svc@example.com",
-                            "private_key_ref": "vault://google-workspace/service-account",
-                        }
-                    },
-                    "sync": {
-                        "users": False,
-                        "audit_logs": True,
-                        "audit_application": "login",
-                    },
-                }
-            )
-        ]
-
-    first = await engine.execute_incremental_sync(fetch)
-
-    assert first.status == "success"
-    assert first.assets_pushed == 1
-
-    second = await engine.execute_incremental_sync(fetch)
-
-    assert second.status == "success"
-    assert second.assets_pushed == 0
-    assert second.assets_skipped == 1
-    assert len(platform.pushed_assets) == 1
-
 
 @pytest.mark.asyncio
 async def test_google_workspace_new_event_is_pushed_incrementally(
@@ -283,29 +216,6 @@ async def test_google_workspace_new_event_is_pushed_incrementally(
     assert second.status == "success"
     assert second.assets_pushed == 1
     assert len(platform.pushed_assets) == 2
-    async def fetch():
-        return [
-            event
-            async for event in connector.ingest(config)
-        ]
-
-    first = await engine.execute_incremental_sync(fetch)
-
-    assert first.assets_pushed == 1
-
-    events.append(
-        make_event(
-            event_time="2026-01-01T01:00:00Z",
-            email="bob@example.com",
-        )
-    )
-
-    second = await engine.execute_incremental_sync(fetch)
-
-    assert second.status == "success"
-    assert second.assets_pushed == 1
-    assert len(platform.pushed_assets) == 2
-
 
 @pytest.mark.asyncio
 async def test_google_workspace_duplicate_events_are_deduplicated(
