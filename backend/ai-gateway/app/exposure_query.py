@@ -8,32 +8,11 @@ severity filters. The local exposure list contains demo data.
 
 from typing import Any, Dict, List, Optional
 
+from app.mock_data import get_exposures
 from app.tools import register_tool
 
 
-EXPOSURES: List[Dict[str, Any]] = [
-    {
-        "asset_id": "asset-001",
-        "asset_name": "AI Gateway",
-        "exposure": "internal",
-        "risk_level": "medium",
-        "status": "active",
-    },
-    {
-        "asset_id": "asset-002",
-        "asset_name": "Redis",
-        "exposure": "internal",
-        "risk_level": "low",
-        "status": "active",
-    },
-    {
-        "asset_id": "asset-003",
-        "asset_name": "PostgreSQL",
-        "exposure": "restricted",
-        "risk_level": "high",
-        "status": "active",
-    },
-]
+EXPOSURES: List[Dict[str, Any]] = get_exposures()
 
 
 ALLOWED_SEVERITIES = {"low", "medium", "high", "critical"}
@@ -95,8 +74,9 @@ def exposure_query(
 
     # Filter the exposure records.
     matches: List[Dict[str, Any]] = []
+    current_exposures = get_exposures() or EXPOSURES
 
-    for exposure in EXPOSURES:
+    for exposure in current_exposures:
         if (
             asset_id is not None
             and exposure["asset_id"].lower() != asset_id.lower()

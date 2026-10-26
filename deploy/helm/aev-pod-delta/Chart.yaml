@@ -1,0 +1,15 @@
+apiVersion: v2
+name: aev-pod-delta
+description: AEV Pod Delta (Module 4 Backend) — AI Gateway, AI Context & Integration Hub
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: AEV Pod Delta Engineering
+    email: engineering@aev-pod-delta.internal
+keywords:
+  - aev
+  - ai-gateway
+  - ai-context
+  - integration-hub
+  - connector-sdk

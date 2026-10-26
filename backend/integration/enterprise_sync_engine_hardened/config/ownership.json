@@ -1,0 +1,32 @@
+{
+  "ownership": {
+    "microsoft_identity": {
+      "owner": "Team Identity",
+      "connectors": ["active-directory-connector", "AEV-microsoft-entra-id-connector", "microsoft-defender-connector"]
+    },
+    "devops_and_source": {
+      "owner": "Team SecOps",
+      "connectors": ["connector-github", "connector-gitlab", "connector-sentinelone"]
+    },
+    "siem_and_logging": {
+      "owner": "Team SIEM",
+      "connectors": ["qradar_connector", "elastic_connector", "splunk_connector"]
+    },
+    "itsm_and_webhooks": {
+      "owner": "Team Platform",
+      "connectors": ["servicenow_connector", "aev-connector-webhook", "connector-microsoft-sentinel"]
+    },
+    "pam_and_secrets": {
+      "owner": "Team PAM",
+      "connectors": ["cyberark_discovery_integration", "cyberark_auth_module", "vault-enterprise-framework"]
+    },
+    "productivity_workspace": {
+      "owner": "Team Workspace",
+      "connectors": ["google_workspace_connector", "google_workspace_auth", "microsoft365_connector"]
+    },
+    "extras_and_cloud": {
+      "owner": "Team Cloud Integrations",
+      "connectors": ["azure_connector", "azure_discovery", "azure-auth-module", "Azure_Normalization_Platform_Push", "okta_connector", "jira_connector"]
+    }
+  }
+}

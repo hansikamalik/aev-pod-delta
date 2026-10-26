@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aev-config
+  namespace: aev-system
+data:
+  POSTGRES_DB: "aevdb"
+  POSTGRES_USER: "aev"
+  GOOGLE_MODEL: "gemma-4-31b-it"
+  AI_CONTEXT_URL: "http://ai-context-svc:8001"
+  AI_CONTEXT_TOKEN: "aev-internal-service-token-32chars-min"
+  AEV_DATA_SOURCE: "database"
+  REDIS_URL: "redis://redis-svc:6379/0"
+  DATABASE_URL: "postgresql://aev:secret@postgres-svc:5432/aevdb"
+  JWT_ALGORITHM: "HS256"

@@ -1,0 +1,33 @@
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aev-connector-sdk"
+version = "1.0.0"
+description = "AEV Pod Delta — Canonical Shared Python Connector SDK (v1.0 Frozen Interface)"
+readme = "connector_sdk/README.md"
+requires-python = ">=3.12"
+license = {text = "Proprietary"}
+authors = [
+    {name = "AEV Pod Delta Engineering", email = "engineering@aev-pod-delta.internal"},
+]
+keywords = ["connector", "sdk", "aev", "integration"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-asyncio>=0.21"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["connector_sdk", "connector_sdk.*"]
+
+[tool.setuptools.package-data]
+connector_sdk = ["README.md", "py.typed"]

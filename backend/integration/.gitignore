@@ -1,0 +1,28 @@
+# Secrets & Environment Files
+config.env
+*.env
+**/config.env
+
+# Vault Scripts & Operational Artifacts
+unseal_vault.sh
+
+# Python Bytecode & Caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Python Bytecode & Caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Python Bytecode & Caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Node Modules
+node_modules/

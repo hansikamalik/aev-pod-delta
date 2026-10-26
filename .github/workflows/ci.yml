@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  ai-gateway:
+    name: AI Gateway Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/ai-gateway
+    env:
+      PYTHONPATH: .
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run tests
+        run: python -m pytest -v --cov=app --cov-fail-under=60
+
+  connector-sdk:
+    name: Connector SDK Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/connector-sdk
+    env:
+      PYTHONPATH: .
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pydantic pytest pytest-asyncio
+
+      - name: Run tests
+        run: python -m pytest -v tests/
+
+  integration-service:
+    name: Integration Service Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/integration
+    env:
+      PYTHONPATH: integration-service
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r integration-service/requirements.txt pytest pytest-cov
+          pip install -e ../connector-sdk
+
+      - name: Run tests
+        run: python -m pytest -c pytest.ini -v
+
+  ai-context:
+    name: AI Context Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/ai-context/CODES/AEV_AI_CONTEXT_Handover
+    env:
+      PYTHONPATH: .
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: python -m pytest

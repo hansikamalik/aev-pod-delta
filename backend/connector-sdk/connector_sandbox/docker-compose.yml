@@ -1,0 +1,24 @@
+# Build-verification harness for Week 4: builds both SDK images clean and
+# runs the sample connector in each, asserting a SUCCESS result.
+#
+#   docker compose build --no-cache
+#   docker compose up --exit-code-from python-sdk --exit-code-from ts-sdk
+#
+# Both services exit 0 only when their sample connector reports SUCCESS.
+# This does NOT start the mock server or a reference connector -- it only
+# verifies that each SDK image is buildable and runnable in isolation,
+# per this week's task. See docs/DOCKER.md for what this does and does not
+# prove.
+
+services:
+  python-sdk:
+    build:
+      context: ..
+      dockerfile: connector_sandbox/python/Dockerfile
+    image: connector-sdk-python:local
+
+  ts-sdk:
+    build:
+      context: ./ts
+      dockerfile: Dockerfile
+    image: connector-sdk-ts:local

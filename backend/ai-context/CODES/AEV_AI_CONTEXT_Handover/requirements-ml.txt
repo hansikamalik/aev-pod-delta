@@ -1,0 +1,4 @@
+# Optional dependencies for local PyTorch & HuggingFace sentence transformer models
+sentence-transformers
+transformers
+torch

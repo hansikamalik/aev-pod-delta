@@ -9,3 +9,14 @@ jsonschema>=4.0.0
 pydantic>=2
 hvac
 requests
+# Local repository packages
+./google_workspace_auth
+./google_workspace_connector
+./active_directory_connector
+./microsoft365_connector
+./microsoft_defender_connector
+# Local relative path dependency for Google Workspace Auth
+./google_workspace_auth
+
+# Missing API client dependency
+googleapiclient

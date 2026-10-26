@@ -2,35 +2,78 @@ version: "3.9"
 
 services:
   postgres:
-    image: postgres:15
+    image: pgvector/pgvector:pg15
     container_name: aev_postgres
     environment:
-      POSTGRES_DB: aevdb
-      POSTGRES_USER: aev
-      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: ${POSTGRES_DB:-aevdb}
+      POSTGRES_USER: ${POSTGRES_USER:-aev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secret}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aev} -d ${POSTGRES_DB:-aevdb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7
     container_name: aev_redis
     ports:
       - "6379:6379"
+    restart: unless-stopped
+
+  ai-context:
+    build: ./backend/ai-context/CODES/AEV_AI_CONTEXT_Handover
+    container_name: aev_ai_context
+    ports:
+      - "8002:8001"
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-aev}:${POSTGRES_PASSWORD:-secret}@postgres:5432/${POSTGRES_DB:-aevdb}
+      AEV_API_KEYS_JSON: '{"aev-internal-service-token-32chars-min":{"user_id":"admin","role":"admin"}}'
+      AEV_DATA_SOURCE: database
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  integration-service:
+    build: ./backend/integration/integration-service
+    container_name: aev_integration_service
+    ports:
+      - "8003:8000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aev}:${POSTGRES_PASSWORD:-secret}@postgres:5432/${POSTGRES_DB:-aevdb}
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
 
   ai-gateway:
     build: ./backend/ai-gateway
     container_name: aev_ai_gateway
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GOOGLE_MODEL: ${GOOGLE_MODEL:-gemma-4-31b-it}
       REDIS_URL: redis://redis:6379
-      DATABASE_URL: postgresql://aev:secret@postgres:5432/aevdb
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aev}:${POSTGRES_PASSWORD:-secret}@postgres:5432/${POSTGRES_DB:-aevdb}
+      AI_CONTEXT_URL: http://ai-context:8001
+      AI_CONTEXT_TOKEN: aev-internal-service-token-32chars-min
+      AI_CONTEXT_TIMEOUT: 5
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
     volumes:
       - ./backend/ai-gateway:/app
 

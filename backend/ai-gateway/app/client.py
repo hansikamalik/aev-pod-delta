@@ -166,32 +166,69 @@ def _ask_colab_gemma(question: str) -> Dict[str, Any]:
         )
 
 
-def _ask_gemma(question: str) -> Dict[str, Any]:
-    """Send a question to Google's Gemma model."""
-    from google import genai
+def _ask_gemma(question: str, tools: Optional[List[Any]] = None) -> Dict[str, Any]:
+    """Send a question to Google's Gemma model with optional tool calling declarations."""
+    import sys
+    genai = sys.modules.get("google.genai")
+    if genai is None or not hasattr(genai, "Client"):
+        from google import genai
 
     client = genai.Client(api_key=GOOGLE_API_KEY)
-    response = client.models.generate_content(
-        model=GOOGLE_MODEL,
-        contents=question,
-    )
+    config = None
+    if tools:
+        try:
+            types = getattr(genai, "types", None)
+            if types is None:
+                from google.genai import types
+            config = types.GenerateContentConfig(tools=tools)
+        except Exception:
+            config = None
 
-    text = getattr(response, "text", None)
-    if not text:
-        raise RuntimeError("Google Gemma returned an empty response.")
+    # Try configured Gemma model (gemma-4-31b-it), with graceful resilience to
+    # the sister Gemma model (gemma-4-26b-a4b-it) if Google's server returns 500.
+    candidates = [GOOGLE_MODEL, f"models/{GOOGLE_MODEL}", "models/gemma-4-26b-a4b-it"]
+    last_exc = None
 
-    usage = _extract_usage(response)
-    return _build_result(
-        answer=text.strip(),
-        model=GOOGLE_MODEL,
-        usage=usage,
-    )
+    for model_name in candidates:
+        try:
+            kwargs: Dict[str, Any] = {"model": model_name, "contents": question}
+            if config is not None:
+                kwargs["config"] = config
+
+            response = client.models.generate_content(**kwargs)
+            text = getattr(response, "text", None)
+            if text:
+                usage = _extract_usage(response)
+                return _build_result(
+                    answer=text.strip(),
+                    model=model_name.replace("models/", ""),
+                    usage=usage,
+                )
+
+            if tools and getattr(response, "function_calls", None):
+                usage = _extract_usage(response)
+                fcs = [
+                    {"name": fc.name, "args": getattr(fc, "args", {}) or {}}
+                    for fc in response.function_calls
+                ]
+                res = _build_result(
+                    answer="",
+                    model=model_name.replace("models/", ""),
+                    usage=usage,
+                )
+                res["function_calls"] = fcs
+                return res
+        except Exception as exc:
+            last_exc = exc
+            continue
+
+    raise last_exc or RuntimeError("Google Gemma returned an empty response.")
 
 
-def ask_gpt(question: str) -> Dict[str, Any]:
+def ask_gpt(question: str, tools: Optional[List[Any]] = None) -> Dict[str, Any]:
     """
     Send a question through the AI Gateway with structured fallback hierarchy:
-    1. Google Gemma Cloud API (Primary)
+    1. Google Gemma Cloud API (Primary, supports dynamic tool declarations)
     2. Colab Gemma T4 GPU API (Secondary)
     3. Mock response (Safety Fallback with explicit warning metadata)
     """
@@ -207,7 +244,7 @@ def ask_gpt(question: str) -> Dict[str, Any]:
     # --- 1. Primary: Google Cloud Gemma ---
     if USE_GEMMA_GOOGLE:
         try:
-            return _ask_gemma(question)
+            return _ask_gemma(question, tools=tools)
         except Exception as exc:
             fallback_reason = f"Google Gemma failed: {exc}"
             fallback_monitor.record_fallback(

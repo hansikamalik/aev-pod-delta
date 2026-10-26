@@ -22,6 +22,29 @@ describe("SampleConnector behaviour beyond the contract suite", () => {
     expect(result.assets_pushed).toBe(0);
     expect(result.errors[0]).toBe("ingest() failed: simulated push failure");
   });
+  it("returns valid configuration and credential schema shapes", () => {
+    const connector = new SampleConnector();
+
+    const config = connector.describeConfig();
+    expect(config.type).toBe("object");
+    expect(config.properties).toEqual({
+      region: {
+        type: "string",
+        description: "Fake region, unused",
+      },
+    });
+    expect(config.required).toEqual([]);
+
+    const credentials = connector.describeCredentials();
+    expect(credentials.type).toBe("object");
+    expect(credentials.properties).toEqual({
+      api_key: {
+        type: "string",
+        secret: true,
+      },
+    });
+    expect(credentials.required).toEqual(["api_key"]);
+  });
 
   it("checkHealth() is false when simulating failure", async () => {
     expect(await new SampleConnector(true).checkHealth()).toBe(false);

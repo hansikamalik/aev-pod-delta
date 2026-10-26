@@ -7,35 +7,54 @@ The local asset index is demo data and should later be
 replaced by the platform's tenant-scoped RAG search service.
 """
 
-from typing import Any, Dict, List
+import logging
+from typing import Any, Dict, List, Optional
 
+import httpx
+
+from app.config import settings
+from app.mock_data import ASSETS
 from app.tools import register_tool
 
+logger = logging.getLogger(__name__)
 
-# Temporary local asset index for development and tests.
-ASSETS: List[Dict[str, Any]] = [
-    {
-        "id": "asset-001",
-        "name": "AI Gateway",
-        "type": "service",
-        "description": "FastAPI service responsible for AI Copilot requests.",
-        "status": "active",
-    },
-    {
-        "id": "asset-002",
-        "name": "Redis",
-        "type": "database",
-        "description": "Redis instance used for request rate limiting.",
-        "status": "active",
-    },
-    {
-        "id": "asset-003",
-        "name": "PostgreSQL",
-        "type": "database",
-        "description": "PostgreSQL database used by the platform.",
-        "status": "active",
-    },
-]
+
+def _search_ai_context(query: str, limit: int = 10) -> Optional[List[Dict[str, Any]]]:
+    """Call AI Context's POST /copilot/asset-search.
+
+    Returns a list of assets in the gateway's shape, or None when AI Context
+    is not configured or the call fails (the caller then uses local data).
+    """
+    if not settings.AI_CONTEXT_URL:
+        return None
+
+    headers = {}
+    if settings.AI_CONTEXT_TOKEN:
+        headers["Authorization"] = f"Bearer {settings.AI_CONTEXT_TOKEN}"
+
+    try:
+        response = httpx.post(
+            f"{settings.AI_CONTEXT_URL}/copilot/asset-search",
+            json={"query": query, "limit": limit},
+            headers=headers,
+            timeout=settings.AI_CONTEXT_TIMEOUT,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        return [
+            {
+                "id": item["id"],
+                "name": item.get("asset_name"),
+                "type": item.get("asset_type"),
+                "description": item.get("description"),
+                "risk_score": item.get("risk_score"),
+                "similarity_score": item.get("similarity_score"),
+            }
+            for item in payload.get("results", [])
+        ]
+    except Exception as exc:  # timeout, connection error, bad status, bad JSON
+        logger.warning("AI Context asset-search failed, using local data: %s", exc)
+        return None
 
 
 @register_tool("asset_search")
@@ -72,20 +91,26 @@ def asset_search(query: str, user_id: str) -> Dict[str, Any]:
     if not user_id:
         raise ValueError("user_id must be a non-empty string")
 
-    # Search the local asset index.
+    # Prefer AI Context's vector search; fall back to the local asset index.
     results: List[Dict[str, Any]] = []
+    source = "ai_context"
+    remote = _search_ai_context(query)
 
-    for asset in ASSETS:
-        searchable_text = (
-            f"{asset['name']} "
-            f"{asset['type']} "
-            f"{asset['description']} "
-            f"{asset['id']}"
-        ).lower()
+    if remote is not None:
+        results = remote
+    else:
+        source = "local"
+        for asset in ASSETS:
+            searchable_text = (
+                f"{asset['name']} "
+                f"{asset['type']} "
+                f"{asset['description']} "
+                f"{asset['id']}"
+            ).lower()
 
-        if query in searchable_text:
-            # Return a copy to prevent callers from modifying the index.
-            results.append(asset.copy())
+            if query in searchable_text:
+                # Return a copy to prevent callers from modifying the index.
+                results.append(asset.copy())
 
     # Generate citations for matching assets.
     citations = [
@@ -104,4 +129,5 @@ def asset_search(query: str, user_id: str) -> Dict[str, Any]:
         "results": results,
         "count": len(results),
         "citations": citations,
+        "source": source,
     }

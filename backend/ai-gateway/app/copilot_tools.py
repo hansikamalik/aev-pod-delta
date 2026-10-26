@@ -1,30 +1,12 @@
-
 """Registered Copilot tools for workflows, policies, audits, and integrations."""
 
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-from app.tools import register_tool
 from app import report_generate   # noqa: F401
-
-
-_WORKFLOWS: Dict[str, Dict[str, Any]] = {
-    "rotate_credentials": {
-        "workflow_id": "rotate_credentials",
-        "description": "Rotate credentials for a specified asset.",
-        "required_params": ["asset_id"],
-    },
-    "isolate_host": {
-        "workflow_id": "isolate_host",
-        "description": "Isolate a host from the network.",
-        "required_params": ["host_id"],
-    },
-    "rescan_asset": {
-        "workflow_id": "rescan_asset",
-        "description": "Run a vulnerability rescan against an asset.",
-        "required_params": ["asset_id"],
-    },
-}
+from app.audit_log import query_interactions
+from app.mock_data import INTEGRATIONS, WORKFLOWS
+from app.tools import register_tool
 
 _POLICY_RULES: Dict[str, Dict[str, Any]] = {
     "pol-no-public-access": {
@@ -53,37 +35,6 @@ _POLICY_RULES: Dict[str, Dict[str, Any]] = {
     },
 }
 
-_MOCK_AUDIT_EVENTS: List[Dict[str, Any]] = [
-    {
-        "resource": "firewall",
-        "actor": "hansika",
-        "action": "update",
-        "details": "Firewall rule updated",
-        "days_ago": 2,
-    },
-    {
-        "resource": "storage_bucket",
-        "actor": "analyst01",
-        "action": "policy_check",
-        "details": "Storage bucket policy checked",
-        "days_ago": 5,
-    },
-    {
-        "resource": "database",
-        "actor": "admin01",
-        "action": "read",
-        "details": "Database audit event",
-        "days_ago": 9,
-    },
-]
-
-_MOCK_INTEGRATIONS: List[Dict[str, Any]] = [
-    {"name": "Microsoft Defender", "status": "connected"},
-    {"name": "GitHub", "status": "connected"},
-    {"name": "Okta", "status": "error"},
-    {"name": "Splunk", "status": "disconnected"},
-]
-
 
 def _start_workflow_run(
     workflow_id: str,
@@ -111,25 +62,43 @@ def workflow_assist(
     """List, describe, dry-run, or start a supported workflow."""
     if action == "list":
         return {
-            "workflows": list(_WORKFLOWS.values()),
-            "count": len(_WORKFLOWS),
+            "workflows": list(WORKFLOWS.values()),
+            "count": len(WORKFLOWS),
+            "citations": [
+                {
+                    "id": "cit-workflows-all",
+                    "type": "reference",
+                    "id_ref": "all_workflows",
+                    "url": "/workflows",
+                }
+            ],
         }
 
     if action == "describe":
         if not workflow_id:
             raise ValueError("workflow_id is required for describe")
 
-        workflow = _WORKFLOWS.get(workflow_id)
+        workflow = WORKFLOWS.get(workflow_id)
         if workflow is None:
             raise ValueError(f"Unknown workflow_id: {workflow_id}")
 
-        return {"workflow": workflow}
+        return {
+            "workflow": workflow,
+            "citations": [
+                {
+                    "id": f"cit-workflow-{workflow_id}",
+                    "type": "reference",
+                    "id_ref": workflow_id,
+                    "url": f"/workflows/{workflow_id}",
+                }
+            ],
+        }
 
     if action == "run":
         if not workflow_id:
             raise ValueError("workflow_id is required for run")
 
-        workflow = _WORKFLOWS.get(workflow_id)
+        workflow = WORKFLOWS.get(workflow_id)
         if workflow is None:
             raise ValueError(f"Unknown workflow_id: {workflow_id}")
 
@@ -145,15 +114,25 @@ def workflow_assist(
                 f"Missing required workflow parameters: {', '.join(missing)}"
             )
 
+        wf_citation = {
+            "id": f"cit-workflow-{workflow_id}",
+            "type": "reference",
+            "id_ref": workflow_id,
+            "url": f"/workflows/{workflow_id}",
+        }
+
         if dry_run:
             return {
                 "status": "dry_run",
                 "workflow_id": workflow_id,
                 "params": run_params,
                 "started_by": user_id,
+                "citations": [wf_citation],
             }
 
-        return _start_workflow_run(workflow_id, run_params, user_id)
+        res = _start_workflow_run(workflow_id, run_params, user_id)
+        res["citations"] = [wf_citation]
+        return res
 
     raise ValueError(f"Unsupported workflow action: {action}")
 
@@ -165,28 +144,30 @@ def policy_check(
     config: Dict[str, Any],
     policy_ids: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
-    """Evaluate a resource configuration against supported policy rules."""
+    """Evaluate a resource configuration against shared mock policy rules."""
     del user_id
 
     if not isinstance(config, dict):
         raise ValueError("config must be an object")
 
+    policy_rules = _POLICY_RULES
+
     if policy_ids is not None:
         unknown_ids = [
             policy_id for policy_id in policy_ids
-            if policy_id not in _POLICY_RULES
+            if policy_id not in policy_rules
         ]
         if unknown_ids:
             raise ValueError(f"Unknown policy IDs: {', '.join(unknown_ids)}")
         selected_ids = policy_ids
     else:
-        selected_ids = list(_POLICY_RULES.keys())
+        selected_ids = list(policy_rules.keys())
 
     applicable = []
     violations = []
 
     for policy_id in selected_ids:
-        rule = _POLICY_RULES[policy_id]
+        rule = policy_rules[policy_id]
         if resource_type not in rule["resource_types"]:
             continue
 
@@ -221,6 +202,15 @@ def policy_check(
         "policies_checked": applicable,
         "violations": violations,
         "violation_count": len(violations),
+        "citations": [
+            {
+                "id": f"cit-policy-{policy_id}",
+                "type": "policy",
+                "id_ref": policy_id,
+                "url": f"/policies/{policy_id}",
+            }
+            for policy_id in applicable
+        ],
     }
 
 
@@ -233,39 +223,51 @@ def audit_query(
     since_days: int = 7,
     limit: int = 50,
 ) -> Dict[str, Any]:
-    """Query mock audit events using optional filters."""
+    """Query the real ai_interactions audit log.
+
+    actor -> user_id column, since_days -> created_at window. The table only
+    records Copilot queries, so resource/action can only match
+    "ai_interaction" / "copilot_query"; anything else returns no entries.
+    """
     if not isinstance(since_days, int) or not 1 <= since_days <= 90:
         raise ValueError("since_days must be an integer between 1 and 90")
 
     if not isinstance(limit, int) or not 1 <= limit <= 200:
         raise ValueError("limit must be an integer between 1 and 200")
 
-    now = datetime.now(timezone.utc)
     entries: List[Dict[str, Any]] = []
 
-    for event in _MOCK_AUDIT_EVENTS:
-        if event["days_ago"] > since_days:
-            continue
-        if resource is not None and event["resource"] != resource:
-            continue
-        if actor is not None and event["actor"] != actor:
-            continue
-        if action is not None and event["action"] != action:
-            continue
+    if resource in (None, "ai_interaction") and action in (None, "copilot_query"):
+        start = datetime.now(timezone.utc) - timedelta(days=since_days)
+        try:
+            rows = query_interactions(
+                user_id=actor,
+                start_date=start.isoformat(),
+                limit=limit,
+            )
+        except Exception as exc:
+            # Never return fake audit data, and never leak DB details.
+            raise RuntimeError("Audit log is currently unavailable") from exc
 
-        entries.append(
-            {
-                "resource": event["resource"],
-                "actor": event["actor"],
-                "action": event["action"],
-                "details": event["details"],
-                "timestamp": (
-                    now - timedelta(days=event["days_ago"])
-                ).isoformat(),
-            }
-        )
-
-    entries = entries[:limit]
+        for row in rows:
+            created = row.get("created_at")
+            entries.append(
+                {
+                    "resource": "ai_interaction",
+                    "actor": row.get("user_id"),
+                    "action": "copilot_query",
+                    "details": (
+                        f"model={row.get('model')} "
+                        f"tokens={row.get('total_tokens')} "
+                        f"cost={row.get('cost')}"
+                    ),
+                    "timestamp": (
+                        created.isoformat()
+                        if hasattr(created, "isoformat")
+                        else str(created)
+                    ),
+                }
+            )
 
     return {
         "count": len(entries),
@@ -273,6 +275,14 @@ def audit_query(
         "queried_by": user_id,
         "since_days": since_days,
         "limit": limit,
+        "citations": [
+            {
+                "id": "cit-audit-log",
+                "type": "audit_log",
+                "id_ref": "ai_interactions",
+                "url": "/copilot/audit-log",
+            }
+        ],
     }
 
 
@@ -281,7 +291,7 @@ def integration_list(
     user_id: str,
     status: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """List integrations, optionally filtered by connection status."""
+    """List integrations from the shared mock layer, optionally filtered by status."""
     del user_id
 
     valid_statuses = {"connected", "error", "disconnected"}
@@ -292,11 +302,19 @@ def integration_list(
 
     integrations = [
         integration.copy()
-        for integration in _MOCK_INTEGRATIONS
+        for integration in INTEGRATIONS
         if status is None or integration["status"] == status
     ]
 
     return {
         "count": len(integrations),
         "integrations": integrations,
+        "citations": [
+            {
+                "id": "cit-integrations",
+                "type": "reference",
+                "id_ref": "integrations_catalog",
+                "url": "/api/v1/integrations",
+            }
+        ],
     }

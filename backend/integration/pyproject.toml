@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "enterprise-sync-engine"
+version = "1.0.0"
+description = "Hardened enterprise sync engine with multi-connector support"
+
+[tool.setuptools]
+packages = [
+    "microsoft365_connector",
+    "active_directory_connector",
+    "microsoft_defender_connector",
+    "cyberark_discovery_integration"
+]
+
+[tool.setuptools.package-dir]
+microsoft365_connector = "backend/integration/microsoft365_connector"
+active_directory_connector = "backend/integration/active_directory_connector"
+microsoft_defender_connector = "backend/integration/microsoft_defender_connector"
+cyberark_discovery_integration = "backend/integration/cyberark_discovery_integration"

@@ -91,7 +91,9 @@ def test_question_without_asset_skips_the_tool(monkeypatch):
     assert response.status_code == 200
     data = response.json()
     assert data["tool_call"] is None
-    assert data["citations"] == []
+    # Response carries baseline citation, but no risk score citation
+    assert len(data["citations"]) >= 1
+    assert not any(c.get("type") == "risk_score" for c in data["citations"])
     assert "Verified data" not in seen["question"]
 
 
@@ -104,4 +106,6 @@ def test_unknown_asset_reports_tool_error_without_crashing(monkeypatch):
     data = response.json()
     assert data["tool_call"]["ok"] is False
     assert "not found" in data["tool_call"]["error"]
-    assert data["citations"] == []
+    # Response carries baseline citation, but no tool citation for the unknown asset
+    assert len(data["citations"]) >= 1
+    assert not any(c.get("id") == "cit-risk-asset-999" for c in data["citations"])

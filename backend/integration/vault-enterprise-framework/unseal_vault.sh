@@ -1,55 +1,80 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-KEYS_FILE="vault_keys.txt"
+KEYS_FILE="${VAULT_KEYS_FILE:-$HOME/.vault/vault_keys.txt}"
 export VAULT_ADDR="${VAULT_ADDR:-http://127.0.0.1:8200}"
 
+if ! command -v vault >/dev/null 2>&1; then
+    echo "Error: Vault CLI is not installed or not in PATH."
+    exit 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+    echo "Error: jq is not installed or not in PATH."
+    exit 1
+fi
+
 if [ ! -f "$KEYS_FILE" ]; then
-    echo "Error: $KEYS_FILE not found!"
+    echo "Error: Key file not found at the configured external path."
+    echo "Set VAULT_KEYS_FILE to the secure location of your key file."
     exit 1
 fi
 
 echo "Checking Vault status at $VAULT_ADDR..."
 
-# Check if already unsealed
-IS_SEALED=$(vault status -format=json 2>/dev/null | jq -r '.sealed // empty')
+STATUS_RC=0
+STATUS_JSON=$(vault status -format=json 2>/dev/null) || STATUS_RC=$?
 
-if [ "$IS_SEALED" == "false" ]; then
+if [ "$STATUS_RC" -ne 0 ] && [ "$STATUS_RC" -ne 2 ]; then
+    echo "Error: Could not retrieve Vault status. Check connectivity and permissions."
+    exit 1
+fi
+
+IS_SEALED=$(printf '%s' "$STATUS_JSON" | jq -r '.sealed')
+
+if [ "$IS_SEALED" = "false" ]; then
     echo "Vault is already unsealed."
     exit 0
 fi
 
-echo "Vault is sealed. Extracting keys from $KEYS_FILE..."
-
-# Extract all unseal keys from the file using grep and awk
-UNSEAL_KEYS=$(grep -i "Unseal Key" "$KEYS_FILE" | awk '{print $NF}')
-
-if [ -z "$UNSEAL_KEYS" ]; then
-    echo "Error: No unseal keys found in $KEYS_FILE."
+if [ "$IS_SEALED" != "true" ]; then
+    echo "Error: Could not determine Vault seal status."
     exit 1
 fi
 
-# Iterate over each key and apply until unsealed
-for KEY in $UNSEAL_KEYS; do
-    echo "Applying unseal key..."
-    
-    UNSEAL_RESPONSE=$(vault operator unseal -format=json "$KEY" 2>/dev/null)
-    SEALED_STATUS=$(echo "$UNSEAL_RESPONSE" | jq -r '.sealed')
+echo "Vault is sealed. Reading unseal keys from the configured external file..."
 
-    if [ "$SEALED_STATUS" == "false" ]; then
-        echo "Successfully unsealed Vault!"
-        break
-    else
-        PROGRESS=$(echo "$UNSEAL_RESPONSE" | jq -r '.t')
-        THRESHOLD=$(echo "$UNSEAL_RESPONSE" | jq -r '.n')
-        echo "Unseal progress: $PROGRESS / $THRESHOLD"
-    fi
-done
+UNSEAL_KEYS=$(grep -i "Unseal Key" "$KEYS_FILE" | awk '{print $NF}' || true)
 
-# Extract and display root token login command if available
-ROOT_TOKEN=$(grep -i "Initial Root Token" "$KEYS_FILE" | awk '{print $NF}')
-if [ -n "$ROOT_TOKEN" ]; then
-    echo ""
-    echo "To log in, run:"
-    echo "vault login $ROOT_TOKEN"
+if [ -z "$UNSEAL_KEYS" ]; then
+    echo "Error: No unseal keys were found in the configured file."
+    exit 1
 fi
+
+while IFS= read -r KEY; do
+    [ -n "$KEY" ] || continue
+
+    echo "Applying unseal key..."
+    if ! UNSEAL_RESPONSE=$(vault operator unseal -format=json "$KEY" 2>/dev/null); then
+        unset KEY UNSEAL_KEYS
+        echo "Error: Vault rejected an unseal operation."
+        exit 1
+    fi
+    unset KEY
+
+    SEALED_STATUS=$(printf '%s' "$UNSEAL_RESPONSE" | jq -r '.sealed')
+
+    if [ "$SEALED_STATUS" = "false" ]; then
+        echo "Successfully unsealed Vault!"
+        unset UNSEAL_KEYS
+        exit 0
+    fi
+
+    PROGRESS=$(printf '%s' "$UNSEAL_RESPONSE" | jq -r '.progress // .t // "unknown"')
+    THRESHOLD=$(printf '%s' "$UNSEAL_RESPONSE" | jq -r '.n // "unknown"')
+    echo "Unseal progress: $PROGRESS / $THRESHOLD"
+done <<< "$UNSEAL_KEYS"
+
+unset UNSEAL_KEYS
+echo "Vault remains sealed. More valid unseal keys may be required."
+exit 1

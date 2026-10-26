@@ -1,38 +1,43 @@
-version: "3.9"
 
 services:
   postgres:
     image: postgres:15
-    container_name: aev_postgres
+    container_name: aev_gateway_postgres
     environment:
-      POSTGRES_DB: aevdb
-      POSTGRES_USER: aev
-      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: ${POSTGRES_DB:-aevdb}
+      POSTGRES_USER: ${POSTGRES_USER:-aev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your .env file}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - gateway_postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
 
   redis:
     image: redis:7
-    container_name: aev_redis
+    container_name: aev_gateway_redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
+    restart: unless-stopped
 
   ai-gateway:
     build: .
     container_name: aev_ai_gateway
     ports:
-      - "8000:8000"
+      - "8001:8000"
     environment:
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      COLAB_GEMMA_URL: ${COLAB_GEMMA_URL:-}
       REDIS_URL: redis://redis:6379
-      DATABASE_URL: postgresql://aev:secret@postgres:5432/aevdb
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aev}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-aevdb}
+      AI_CONTEXT_URL: ${AI_CONTEXT_URL:-}
+      AI_CONTEXT_TIMEOUT: ${AI_CONTEXT_TIMEOUT:-3}
     depends_on:
       - postgres
       - redis
     volumes:
       - .:/app
+    restart: unless-stopped
 
 volumes:
-  postgres_data:
+  gateway_postgres_data:
