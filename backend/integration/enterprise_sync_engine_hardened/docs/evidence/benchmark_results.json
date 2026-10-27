@@ -1,7 +1,8 @@
 {
   "records_processed": 10000,
-  "duration_seconds": 0.0118,
+  "duration_seconds": 0.0729,
   "target_seconds": 300.0,
   "status": "PASSED",
-  "assets_pushed": 10000
+  "assets_pushed": 10000,
+  "engine_reported_assets_pushed": 10000
 }
